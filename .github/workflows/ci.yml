@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Verify package.json
+        run: node -e "require('./package.json')"
+
+      - name: Verify installer loads
+        run: node -e "require('./lib/installer.js')"
+
+      - name: Verify bin entry point
+        run: node bin/install.js --help
+
+      - name: Verify all skill files exist
+        run: |
+          test -f skill/SKILL.md
+          test -d skill/tasks
+          test -d skill/scripts
+          test -d skill/templates
+          test -d skill/data
+          test -d skill/resources
+          echo "All skill directories present"
+
+      - name: Verify task files
+        run: |
+          for f in create-project plan-project develop-project test-project deploy-project resume status handle-change; do
+            test -f "skill/tasks/yuri-${f}.md" || (echo "Missing: yuri-${f}.md" && exit 1)
+          done
+          echo "All 8 task files present"
+
+      - name: Verify scripts executable
+        run: |
+          for f in monitor-agent.sh start-planning.sh ensure-session.sh scan-stories.sh; do
+            test -f "skill/scripts/${f}" || (echo "Missing: ${f}" && exit 1)
+          done
+          echo "All 4 scripts present"
+
+      - name: Verify resource files
+        run: |
+          for f in mcp.json.template settings.local.json handoff-detector.sh o.md o-help.md o-status.md start-orchestrix.sh core-config.template.yaml; do
+            test -f "skill/resources/${f}" || (echo "Missing: ${f}" && exit 1)
+          done
+          echo "All resource files present"
+
+      - name: Validate YAML files
+        run: |
+          node -e "
+            const fs = require('fs');
+            const files = [
+              'skill/templates/memory.template.yaml',
+              'skill/data/deployment-options.yaml',
+              'skill/data/phase-routing.yaml'
+            ];
+            for (const f of files) {
+              const content = fs.readFileSync(f, 'utf8');
+              if (!content.trim()) throw new Error(f + ' is empty');
+              console.log('OK: ' + f);
+            }
+          "
+
+      - name: Dry-run install
+        run: |
+          mkdir -p ~/.claude/skills
+          node bin/install.js install
+          test -f ~/.claude/skills/yuri/SKILL.md
+          echo "Install verified: ~/.claude/skills/yuri/SKILL.md exists"
