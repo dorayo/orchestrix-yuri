@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+vendor/
+venv/
+__pycache__/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
+build/
+out/
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Orchestrix runtime
+.orchestrix-core/runtime/

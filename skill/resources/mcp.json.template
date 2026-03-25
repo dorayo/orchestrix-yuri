@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "orchestrix": {
+      "type": "http",
+      "url": "https://orchestrix-mcp.youlidao.ai/api/mcp",
+      "headers": {
+        "Authorization": "Bearer {{ORCHESTRIX_LICENSE_KEY}}"
+      }
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    }
+  }
+}

@@ -1,0 +1,77 @@
+# Yuri Project Memory — auto-generated, do not edit manually
+# Tracks the full lifecycle state of a Yuri-managed project.
+
+project:
+  name: ""
+  dir_name: ""
+  project_root: ""
+  license_key: ""
+  description: ""
+  created_at: ""
+  tech_stack: ""
+
+lifecycle:
+  current_phase: 0
+  current_step: ""
+  started_at: ""
+  phase_status:
+    phase1_create: pending
+    phase2_plan: pending
+    phase3_develop: pending
+    phase4_test: pending
+    phase5_deploy: pending
+
+tmux:
+  planning_session: ""
+  dev_session: ""
+
+planning:
+  steps:
+    - id: analyst
+      status: pending
+      output: ""
+      completed_at: ""
+    - id: pm
+      status: pending
+      output: ""
+      completed_at: ""
+    - id: ux-expert
+      status: pending
+      output: ""
+      completed_at: ""
+    - id: architect
+      status: pending
+      output: ""
+      completed_at: ""
+    - id: po-validate
+      status: pending
+      output: ""
+      completed_at: ""
+    - id: po-shard
+      status: pending
+      output: ""
+      completed_at: ""
+
+development:
+  total_epics: 0
+  total_stories: 0
+  stories_done: 0
+  stories_in_progress: []
+  last_progress_at: ""
+  stuck_count: 0
+
+testing:
+  epics: []
+
+deployment:
+  strategy: ""
+  url: ""
+  status: ""
+
+changes:
+  history: []
+
+errors:
+  last_error: ""
+  total_errors: 0
+  recovery_log: []

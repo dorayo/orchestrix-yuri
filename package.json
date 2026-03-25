@@ -1,0 +1,31 @@
+{
+  "name": "orchestrix-yuri",
+  "version": "1.0.0",
+  "description": "Yuri — Meta-Orchestrator for Orchestrix. Drive your entire project lifecycle with natural language.",
+  "main": "lib/installer.js",
+  "bin": {
+    "orchestrix-yuri": "bin/install.js"
+  },
+  "scripts": {
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "keywords": [
+    "orchestrix",
+    "ai-agent",
+    "meta-orchestrator",
+    "claude-code",
+    "skill",
+    "project-lifecycle",
+    "tmux-automation"
+  ],
+  "author": "dorayo",
+  "license": "MIT",
+  "files": [
+    "bin/",
+    "lib/",
+    "skill/"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,44 @@
+# Yuri Deployment Options
+# Used by Phase 5 to present deployment strategies to the user.
+
+china:
+  - id: china-sealos
+    provider: Sealos
+    best_for: Prototype / MVP
+    description: One-click container deployment, zero ops
+
+  - id: china-aliyun-ecs
+    provider: Aliyun ECS + Docker Compose
+    best_for: Production
+    description: Full control with ECS instances, Nginx reverse proxy, SSL
+
+  - id: china-vercel
+    provider: Vercel (CN-accessible)
+    best_for: Frontend / SSR
+    description: Static and SSR deployment, accessible from China
+
+  - id: china-aliyun-oss-cdn
+    provider: Aliyun OSS + CDN
+    best_for: Static sites
+    description: Static asset hosting with CDN acceleration
+
+overseas:
+  - id: overseas-vercel
+    provider: Vercel
+    best_for: Frontend / Full-stack (Next.js)
+    description: Zero-config deployment, edge functions
+
+  - id: overseas-railway
+    provider: Railway
+    best_for: Backend APIs
+    description: Simple container deployment with built-in databases
+
+  - id: overseas-aws
+    provider: AWS (ECS / Lambda)
+    best_for: Enterprise scale
+    description: Full cloud infrastructure with auto-scaling
+
+  - id: overseas-fly
+    provider: Fly.io
+    best_for: Global edge deployment
+    description: Deploy containers close to users worldwide

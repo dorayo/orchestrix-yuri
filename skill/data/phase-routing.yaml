@@ -1,0 +1,50 @@
+# Yuri Phase Routing Rules
+# Determines which phase to route to based on user intent.
+
+routes:
+  - intent_patterns: ["create", "new project", "start a project", "build something", "I want to make"]
+    target_phase: 1
+    command: "*create"
+
+  - intent_patterns: ["plan", "planning", "design", "specification", "PRD", "architecture"]
+    target_phase: 2
+    command: "*plan"
+
+  - intent_patterns: ["develop", "implement", "code", "build", "start development"]
+    target_phase: 3
+    command: "*develop"
+
+  - intent_patterns: ["test", "smoke test", "QA", "quality", "verify"]
+    target_phase: 4
+    command: "*test"
+
+  - intent_patterns: ["deploy", "ship", "release", "go live", "publish", "launch"]
+    target_phase: 5
+    command: "*deploy"
+
+  - intent_patterns: ["status", "progress", "where are we", "what's happening"]
+    target_phase: 0
+    command: "*status"
+
+  - intent_patterns: ["change", "modify", "update requirement", "add feature", "new feature"]
+    target_phase: 0
+    command: "*change"
+
+  - intent_patterns: ["resume", "continue", "pick up", "where we left off"]
+    target_phase: 0
+    command: "*resume"
+
+change_scope_rules:
+  small:
+    max_files: 5
+    no_db_changes: true
+    no_security_changes: true
+    action: dev_solo
+
+  medium:
+    action: po_route_change
+    requires_planning_session: true
+
+  large:
+    action: pause_and_replan
+    requires_planning_session: true
