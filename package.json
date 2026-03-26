@@ -7,7 +7,8 @@
     "orchestrix-yuri": "bin/install.js"
   },
   "scripts": {
-    "test": "echo \"No tests yet\" && exit 0"
+    "test": "echo \"No tests yet\" && exit 0",
+    "serve": "node bin/serve.js"
   },
   "keywords": [
     "orchestrix",
@@ -16,7 +17,9 @@
     "claude-code",
     "skill",
     "project-lifecycle",
-    "tmux-automation"
+    "tmux-automation",
+    "telegram-bot",
+    "channel-gateway"
   ],
   "author": "dorayo",
   "license": "MIT",
@@ -29,6 +32,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "grammy": "^1.41.1",
     "js-yaml": "^4.1.1"
   }
 }
