@@ -122,12 +122,46 @@ When monitoring an agent in a tmux window, use [monitor-agent.sh](scripts/monito
 | 3 | Approval prompt | `◐` → auto-send "y" + Enter |
 | 4 | Content stability | Pane hash unchanged 3 consecutive polls |
 
+## tmux Input Rules
+
+**CRITICAL: Always send Enter immediately after content.**
+
+When sending text to a tmux pane (especially multi-line content), Claude Code's TUI
+treats it as a "paste" that lands in the input buffer — it does NOT auto-submit.
+You MUST send an explicit `Enter` immediately after the content:
+
+```bash
+# Single-line: include Enter in the same send-keys call
+tmux send-keys -t "$SESSION:$WINDOW" "some command" Enter
+
+# Multi-line: send content first, then Enter separately
+tmux send-keys -t "$SESSION:$WINDOW" "$(cat <<'EOF'
+multi-line content here
+EOF
+)" Enter
+```
+
+**Never assume content was submitted** — always follow up with `Enter` if there is
+any doubt. A common symptom of missing Enter is the monitor detecting `STABLE_IDLE`
+while the pane shows `[Pasted text #N +X lines]` in the input box.
+
+## `/clear` Usage Rules
+
+**`/clear` is ONLY for error recovery or cross-phase re-activation.** Never use it
+during normal within-phase workflow.
+
+| Scenario | Action |
+|----------|--------|
+| **Same phase, same window** (e.g., asking agent to modify its output) | Just send the new instruction + Enter. Do NOT `/clear`. |
+| **Same phase, agent drifted** (e.g., Telegram noise corrupted context) | `/clear` Enter → wait 1s → `/o {agent}` Enter → wait 15s → send command Enter |
+| **Cross-phase re-activation** (e.g., Phase 3 needs to modify a Phase 2 agent) | `/clear` Enter → wait 1s → `/o {agent}` Enter → wait 15s → send command Enter |
+| **Agent load failure** | `/clear` Enter → retry `/o {agent}` Enter |
+| **Stuck agent** (no change 5min) | `/clear` Enter → restart |
+
 ## Error Recovery
 
 - **Max 2 auto-retries** per operation, then escalate to user.
-- **Agent load failure**: `/clear` → retry `/o {agent}`.
 - **tmux session death**: Lazy recreation via `ensure-session.sh`.
-- **Stuck agent** (no change 5min): `/clear` → restart.
 - **Handoff chain break** (Phase 3): Manually resend handoff command to target window.
 
 ## Resource Directory

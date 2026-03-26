@@ -79,9 +79,25 @@ sleep 2  # Wait for Claude Code to start
 **2.3** Activate agent and send command:
 ```bash
 tmux send-keys -t "$SESSION:$WINDOW_IDX" "/o {agent}" Enter
-sleep 15  # Wait for agent to load
+sleep 10  # Wait for agent to load
 tmux send-keys -t "$SESSION:$WINDOW_IDX" "{command}" Enter
 ```
+
+**2.3.1** When answering agent questions (multi-line text):
+```bash
+# Multi-line content is treated as a "paste" by Claude Code TUI.
+# It lands in the input buffer but does NOT auto-submit.
+# You MUST send Enter immediately after the content.
+tmux send-keys -t "$SESSION:$WINDOW_IDX" "$(cat <<'EOF'
+your multi-line answer here
+EOF
+)" Enter
+# ^ Enter is CRITICAL — without it, content stays in input box
+```
+
+**IMPORTANT:** Do NOT use `/clear` within the planning phase. Each agent has its own
+window and retains context for the entire phase. Only use `/clear` for error recovery
+(see SKILL.md `/clear` Usage Rules).
 
 **2.4** Monitor completion:
 ```bash
