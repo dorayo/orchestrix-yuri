@@ -23,7 +23,4 @@ chat_history:
   storage: ~/.yuri/chat-history/
 
 engine:
-  cli_command: cc
-  fallback_command: claude
   skill: yuri
-  allowed_tools: "Read,Write,Edit,Bash,Glob,Grep"
