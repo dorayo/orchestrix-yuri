@@ -1,0 +1,15 @@
+# Boss Profile — accumulated understanding of the user
+# Location: ~/.yuri/boss/profile.yaml
+# Populated over time via Observe engine. Never overwrite on reinstall.
+
+name: ""
+role: ""
+
+expertise:
+  strong: []
+  growing: []
+
+work_style:
+  hours: ""
+  decision_speed: ""
+  detail_level: ""

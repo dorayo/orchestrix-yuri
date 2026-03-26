@@ -1,0 +1,12 @@
+# Portfolio Registry — all Yuri-managed projects
+# Location: ~/.yuri/portfolio/registry.yaml
+# Updated when projects are created, paused, archived, or status changes.
+
+projects: []
+# - id: project-dir-name
+#   name: "Display Name"
+#   root: /absolute/path/to/project
+#   phase: 0-5
+#   status: active | paused | maintenance | archived
+#   pulse: "one-line status summary"
+#   started_at: "ISO 8601"

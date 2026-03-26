@@ -1,0 +1,10 @@
+# Phase 5: Deploy — state file
+# Location: {project}/.yuri/state/phase5.yaml
+
+status: pending
+started_at: ""
+completed_at: ""
+
+strategy: ""
+url: ""
+health: ""

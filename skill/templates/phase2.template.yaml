@@ -1,0 +1,35 @@
+# Phase 2: Plan — state file
+# Location: {project}/.yuri/state/phase2.yaml
+
+status: pending
+started_at: ""
+completed_at: ""
+
+steps:
+  - id: analyst
+    status: pending
+    output: ""
+    completed_at: ""
+  - id: pm
+    status: pending
+    output: ""
+    completed_at: ""
+  - id: ux-expert
+    status: pending
+    output: ""
+    completed_at: ""
+  - id: architect
+    status: pending
+    output: ""
+    completed_at: ""
+  - id: po-validate
+    status: pending
+    output: ""
+    completed_at: ""
+  - id: po-shard
+    status: pending
+    output: ""
+    completed_at: ""
+
+tmux:
+  session: ""

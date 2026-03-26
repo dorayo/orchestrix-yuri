@@ -1,0 +1,12 @@
+# Phase 1: Create — state file
+# Location: {project}/.yuri/state/phase1.yaml
+
+status: pending
+created_at: ""
+completed_at: ""
+
+collected:
+  name: ""
+  dir_name: ""
+  license_key: ""
+  description: ""

@@ -1,3 +1,9 @@
+# DEPRECATED: This file is retained for backward compatibility and migration only.
+# New projects use the four-layer memory system:
+#   identity.yaml + focus.yaml + state/phaseN.yaml + timeline/events.jsonl
+# See: skill/tasks/_wake-up.md for the memory loading protocol.
+#
+# Original header:
 # Yuri Project Memory — auto-generated, do not edit manually
 # Tracks the full lifecycle state of a Yuri-managed project.
 

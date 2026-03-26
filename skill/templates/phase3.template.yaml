@@ -1,0 +1,28 @@
+# Phase 3: Develop — state file
+# Location: {project}/.yuri/state/phase3.yaml
+
+status: pending
+started_at: ""
+completed_at: ""
+
+progress:
+  total_epics: 0
+  total_stories: 0
+  by_status:
+    done: []
+    in_progress: []
+    blocked: []
+    remaining: []
+
+monitoring:
+  poll_count: 0
+  stuck_count: 0
+  last_progress_at: ""
+
+tmux:
+  session: ""
+  windows:
+    0: architect
+    1: sm
+    2: dev
+    3: qa

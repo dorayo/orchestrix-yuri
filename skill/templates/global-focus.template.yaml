@@ -1,0 +1,16 @@
+# Yuri Global Focus — current attention state
+# Location: ~/.yuri/focus.yaml
+# Updated after every interaction.
+
+active_project: ""
+active_action: ""
+
+attention_queue: []
+# - project: project-id
+#   urgency: high | medium | low
+#   next: "description of next expected event"
+
+pending_from_boss: []
+# - "project-id: description of pending decision"
+
+updated_at: ""

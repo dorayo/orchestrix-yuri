@@ -7,24 +7,36 @@
 
 ## Prerequisites
 
-- Phase 1 (Create) must be complete
-- `.yuri/memory.yaml` must exist with `phase1_create: complete`
+- Phase 1 (Create) must be complete.
+- `{project}/.yuri/state/phase1.yaml` must have `status: complete`.
 
 ---
 
-## Step 0: Load Memory and Validate
+## Step 0: Wake Up
 
-1. Read `.yuri/memory.yaml` — restore project context
-2. Verify `lifecycle.phase_status.phase1_create == complete`
-   - If not → "Phase 1 not complete. Run `*create` first."
-3. Set `PROJECT_DIR` from `project.project_root`
-4. If `phase2_plan == in_progress` → find last completed planning step, resume from next
-5. If `phase2_plan == complete` → offer skip to Phase 3
+Read [_wake-up.md](tasks/_wake-up.md) and execute it fully.
+
+After Wake Up, validate:
+1. Read `{project}/.yuri/state/phase1.yaml` → verify `status` = `complete`.
+   - IF not → "Phase 1 not complete. Run `*create` first." and stop.
+2. Set `PROJECT_DIR` from `{project}/.yuri/identity.yaml` → `project.root`.
+
+**Resumption check:**
+- IF `{project}/.yuri/state/phase2.yaml` exists with `status: in_progress`:
+  → Find the last step with `status: complete` → resume from the next step.
+- IF `{project}/.yuri/state/phase2.yaml` exists with `status: complete`:
+  → Offer to skip to Phase 3.
+- OTHERWISE → initialize `state/phase2.yaml` from `$TEMPLATES_DIR/phase2.template.yaml`.
 
 Update memory:
-- `lifecycle.current_phase` → 2
-- `lifecycle.phase_status.phase2_plan` → "in_progress"
-- Save immediately
+- `{project}/.yuri/focus.yaml` → `phase: 2`, `step: "planning"`, `action: "starting planning agents"`, `updated_at: now`
+- `{project}/.yuri/state/phase2.yaml` → `status: "in_progress"`, `started_at: now`
+- `~/.yuri/focus.yaml` → `active_action: "planning project: {name}"`, `updated_at: now`
+- Append to `{project}/.yuri/timeline/events.jsonl`:
+  ```jsonl
+  {"ts":"{ISO-8601}","type":"phase_started","phase":2}
+  ```
+- Save all files immediately.
 
 ---
 
@@ -40,8 +52,9 @@ SESSION=$(bash "$SCRIPT_DIR/ensure-session.sh" planning "$PROJECT_DIR")
 This creates an `op-{project-name}` tmux session with an initial window running Claude Code.
 
 Update memory:
-- `tmux.planning_session` → `$SESSION`
-- Save immediately
+- `{project}/.yuri/focus.yaml` → `tmux.planning_session: "$SESSION"`
+- `{project}/.yuri/state/phase2.yaml` → `tmux.session: "$SESSION"`
+- Save immediately.
 
 ---
 
@@ -127,11 +140,28 @@ Continue / Review / Modify?
 - **Modify** → user specifies changes, resend to agent in same window
 
 **2.7** Save memory:
+
+Update `{project}/.yuri/state/phase2.yaml`:
+```yaml
+steps[n].status: complete
+steps[n].output: "{expected_file}"
+steps[n].completed_at: "{ISO 8601 timestamp}"
 ```
-planning.steps[n].status = complete
-planning.steps[n].output = "{expected_file}"
-planning.steps[n].completed_at = "{ISO 8601 timestamp}"
+
+Append to `{project}/.yuri/timeline/events.jsonl`:
+```jsonl
+{"ts":"{ISO-8601}","type":"agent_completed","agent":"{agent}","output":"{expected_file}"}
 ```
+
+Update `{project}/.yuri/focus.yaml`:
+- `step` → "planning.{agent}.complete"
+- `pulse` → "Phase 2: {n}/6 agents complete"
+- `updated_at` → now
+
+Update `~/.yuri/portfolio/registry.yaml` → this project's `pulse`.
+
+**2.8** Observe: Check if the user expressed any preferences or corrections during 2.6.
+IF signal detected → append to `~/.yuri/inbox.jsonl`.
 
 ### Special: Steps 4-5 (PO validate + shard)
 
@@ -148,10 +178,9 @@ Steps 4 and 5 share the same window (window 4):
 tmux kill-session -t "$SESSION"
 ```
 
-2. Save checkpoint:
-- `lifecycle.phase_status.phase2_plan` → "complete"
-- `lifecycle.current_step` → "phase2.complete"
-- Write checkpoint → `.yuri/checkpoints/checkpoint-phase2.yaml`
+2. Update memory:
+- `{project}/.yuri/state/phase2.yaml` → `status: complete`, `completed_at: now`
+- `{project}/.yuri/focus.yaml` → `step: "phase2.complete"`, `pulse: "Phase 2 complete, ready for development"`, `tmux.planning_session: ""`
 
 3. Output summary:
 ```
@@ -172,3 +201,15 @@ All planning documents generated:
 
 - If Y → execute `tasks/yuri-develop-project.md`
 - If N → save state, end with reminder: "Run `/yuri *develop` when ready."
+
+---
+
+## Final Step: Close Out
+
+Read [_close-out.md](tasks/_close-out.md) and execute it fully.
+
+Phase 2 completes in Step 3, so the Close Out will trigger:
+- F.1 Reflect (process inbox observations from user interactions during planning)
+- F.2 Phase Reflect (review Phase 2 timeline → extract architecture decisions, domain knowledge)
+- F.3 Consolidate (check if any insights are universal)
+- F.4 Decay (check stale entries)

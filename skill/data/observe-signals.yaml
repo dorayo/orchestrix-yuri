@@ -1,0 +1,57 @@
+# Observe Engine — Signal Classification Rules
+# Used by Yuri to detect memory-worthy signals during interactions.
+# Each signal category defines trigger patterns and the target memory file.
+
+signals:
+
+  boss_preference:
+    description: User expresses a communication or workflow preference
+    triggers:
+      - user says "don't...", "stop...", "from now on...", "I prefer...", "always...", "never..."
+      - user reacts to output format (too verbose, too brief, wrong language)
+      - user chooses a specific workflow pattern repeatedly
+    target: ~/.yuri/boss/preferences.yaml
+
+  boss_identity:
+    description: User reveals information about themselves
+    triggers:
+      - user mentions their role, title, expertise, or team
+      - user mentions schedule, availability, or timezone
+      - user references external constraints (investors, clients, deadlines, stakeholders)
+    target: ~/.yuri/boss/profile.yaml
+
+  priority_change:
+    description: User shifts project priority or urgency
+    triggers:
+      - user says "focus on...", "pause...", "stop...", "this is urgent", "deadline is..."
+      - user switches attention between projects
+      - user deprioritizes or cancels a project
+    target: ~/.yuri/portfolio/priorities.yaml
+
+  tech_lesson:
+    description: A technical insight is discovered or shared
+    triggers:
+      - an error is resolved with a non-obvious fix
+      - a workaround is applied for a platform limitation
+      - user shares a technical constraint or tribal knowledge
+      - a tool/library behaves unexpectedly
+    target_project: "{project}/.yuri/knowledge/insights.md"
+    target_global: "~/.yuri/wisdom/tech.md"
+    promotion_rule: "Write to project knowledge first. Promote to global wisdom during Consolidate if the insight applies beyond this project."
+
+  correction:
+    description: User corrects a Yuri assumption or decision
+    triggers:
+      - user says "no, I meant...", "that's not right", "wrong project"
+      - Yuri inferred the wrong project or wrong intent
+      - user rejects a proposed approach
+    target: varies (the memory file where the incorrect assumption originated)
+
+  emotion:
+    description: User expresses satisfaction, frustration, or urgency
+    triggers:
+      - repeated emphasis or escalation ("still not done??", "this is taking too long")
+      - explicit satisfaction ("perfect", "exactly what I wanted")
+      - urgency markers ("ASAP", "before the meeting", "client is waiting")
+    target: ~/.yuri/inbox.jsonl
+    note: "Stored in inbox for Reflect engine to analyze. May influence boss/preferences (e.g., increase update frequency under pressure)."

@@ -1,39 +1,68 @@
 # Project Status Query
 
 **Command**: `*status`
-**Purpose**: Display comprehensive project status without modifying any state.
+**Purpose**: Display comprehensive project status without modifying any state. Supports multi-project portfolio view.
 
 ---
 
-## Step 1: Read Memory
+## Step 0: Wake Up
 
-```bash
-MEMORY_FILE=".yuri/memory.yaml"
-```
+Read [_wake-up.md](tasks/_wake-up.md) and execute it fully.
 
-- If `.yuri/memory.yaml` not found → "No project state found. Use `*create` to start a new project."
-- If found → read and parse full memory state
+**Note**: For `*status`, Step 0 is read-only. Do NOT update focus.yaml or portfolio.yaml — this is a pure query command.
 
 ---
 
-## Step 2: Display Project Overview
+## Step 1: Portfolio Overview
+
+Read `~/.yuri/portfolio/registry.yaml`.
+
+IF multiple projects exist with `status: active` or `status: maintenance`:
 
 ```
-## 📊 Project Status: {project.name}
+## 📊 Portfolio Overview
+
+| # | Project | Phase | Status | Pulse |
+|---|---------|-------|--------|-------|
+{for each project: | N | name | Phase X | status | pulse |}
+```
+
+IF only one project exists, skip the portfolio table and go directly to Step 2.
+
+---
+
+## Step 2: Current Project Detail
+
+Determine the target project:
+- IF CWD matches a project in `registry.yaml` → use that project.
+- IF the user specified a project name → use that project.
+- IF only one project exists → use that project.
+- OTHERWISE → ask the user which project to show detail for.
+
+Read project memory:
+- `{project}/.yuri/identity.yaml`
+- `{project}/.yuri/focus.yaml`
+
+```
+## 📊 Project Status: {identity.project.name}
 
 | Item | Detail |
 |------|--------|
 | **Project** | {project.name} |
-| **Path** | {project.project_root} |
+| **Path** | {project.root} |
 | **Description** | {project.description} |
-| **Tech Stack** | {project.tech_stack} |
+| **Tech Stack** | {project.stack} |
 | **Created** | {project.created_at} |
 | **License** | {configured / pending} |
+| **Current Phase** | Phase {focus.phase} — {focus.step} |
+| **Last Active** | {focus.updated_at} |
 ```
 
 ---
 
-## Step 3: Display Phase Progress
+## Step 3: Phase Progress
+
+Check which `{project}/.yuri/state/phase{1-5}.yaml` files exist and their status.
 
 ```
 ### Lifecycle Progress
@@ -45,8 +74,6 @@ MEMORY_FILE=".yuri/memory.yaml"
 | 3. Develop | {✅/🔄/⏳} {status} | Story implementation |
 | 4. Test | {✅/🔄/⏳} {status} | Smoke testing |
 | 5. Deploy | {✅/🔄/⏳} {status} | Deployment |
-
-**Current**: Phase {current_phase} — {current_step}
 ```
 
 Status icons:
@@ -57,9 +84,11 @@ Status icons:
 
 ---
 
-## Step 4: Display Phase-Specific Details
+## Step 4: Phase-Specific Details
 
-### If Phase 2 (Plan) is in progress or complete:
+### IF Phase 2 (Plan) is in progress or complete:
+
+Read `{project}/.yuri/state/phase2.yaml`.
 
 ```
 ### Planning Progress
@@ -74,7 +103,9 @@ Status icons:
 | 5 | PO Shard | {status} | {output file} |
 ```
 
-### If Phase 3 (Develop) is in progress or complete:
+### IF Phase 3 (Develop) is in progress or complete:
+
+Read `{project}/.yuri/state/phase3.yaml`.
 
 Scan current story statuses:
 ```bash
@@ -88,16 +119,17 @@ bash "$SCRIPT_DIR/scan-stories.sh" "$PROJECT_DIR"
 | Metric | Value |
 |--------|-------|
 | Total Stories | {total} |
-| Done | {done} |
-| In Progress | {in_progress} |
-| In Review | {review} |
-| Blocked | {blocked} |
-| Remaining | {remaining} |
+| Done | {done count} |
+| In Progress | {in_progress count} |
+| Blocked | {blocked count} |
+| Remaining | {remaining count} |
 
 Progress: [{done}/{total}] {'█' * pct}{'░' * (100-pct)} {pct}%
 ```
 
-### If Phase 4 (Test) is in progress or complete:
+### IF Phase 4 (Test) is in progress or complete:
+
+Read `{project}/.yuri/state/phase4.yaml`.
 
 ```
 ### Testing Progress
@@ -108,7 +140,9 @@ Progress: [{done}/{total}] {'█' * pct}{'░' * (100-pct)} {pct}%
 | ... | ... | ... |
 ```
 
-### If Phase 5 (Deploy) is complete:
+### IF Phase 5 (Deploy) is complete:
+
+Read `{project}/.yuri/state/phase5.yaml`.
 
 ```
 ### Deployment
@@ -117,21 +151,21 @@ Progress: [{done}/{total}] {'█' * pct}{'░' * (100-pct)} {pct}%
 |------|--------|
 | Strategy | {strategy} |
 | URL | {url} |
-| Status | {status} |
+| Health | {health} |
 ```
 
 ---
 
-## Step 5: Display tmux Session Status
+## Step 5: tmux Session Status
 
 Check if tmux sessions are alive:
 
 ```bash
-# Planning session
-tmux has-session -t "{tmux.planning_session}" 2>/dev/null && echo "ALIVE" || echo "DEAD"
+PLAN_SESSION=$(from focus.yaml → tmux.planning_session)
+DEV_SESSION=$(from focus.yaml → tmux.dev_session)
 
-# Dev session
-tmux has-session -t "{tmux.dev_session}" 2>/dev/null && echo "ALIVE" || echo "DEAD"
+test -n "$PLAN_SESSION" && tmux has-session -t "$PLAN_SESSION" 2>/dev/null && echo "ALIVE" || echo "DEAD"
+test -n "$DEV_SESSION" && tmux has-session -t "$DEV_SESSION" 2>/dev/null && echo "ALIVE" || echo "DEAD"
 ```
 
 ```
@@ -143,14 +177,21 @@ tmux has-session -t "{tmux.dev_session}" 2>/dev/null && echo "ALIVE" || echo "DE
 | Development | {dev_session} | {ALIVE/DEAD/N/A} |
 ```
 
-If any change history exists:
-```
-### Change History
+---
 
-| # | Timestamp | Phase | Description | Action |
-|---|-----------|-------|-------------|--------|
-| 1 | {ts} | {phase} | {desc} | {action} |
-| ... | ... | ... | ... | ... |
+## Step 6: Recent Activity (optional)
+
+Read the last 10 entries from `{project}/.yuri/timeline/events.jsonl`.
+
+```
+### Recent Activity
+
+| Time | Event |
+|------|-------|
+| {ts} | {type}: {detail} |
+| ... | ... |
 ```
 
-**Note**: This command is read-only. No state is modified.
+---
+
+**Note**: This command is read-only. No state is modified. No Final Step (Close Out) is needed.

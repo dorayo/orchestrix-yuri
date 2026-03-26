@@ -5,48 +5,70 @@
 
 ---
 
-## Step 1: Read Memory
+## Step 0: Wake Up
 
-```bash
-MEMORY_FILE=".yuri/memory.yaml"
-```
+Read [_wake-up.md](tasks/_wake-up.md) and execute it fully.
 
-- If `.yuri/memory.yaml` not found → "No project state found. Use `*create` to start a new project."
-- If found → read and parse full memory state
+---
+
+## Step 1: Detect Project Context
+
+### 1.1 Check for New Memory Structure
+
+IF `{project}/.yuri/identity.yaml` exists → use new four-layer memory system. Proceed to Step 2.
+
+### 1.2 Check for Legacy Memory (backward compatibility)
+
+IF `{project}/.yuri/memory.yaml` exists BUT `{project}/.yuri/identity.yaml` does NOT:
+- Inform user: "Detected legacy memory format. Migration required."
+- Ask: "Run migration now? (Y/N)"
+- IF Y → run `node ~/.claude/skills/yuri/../../../lib/migrate.js "{project_root}"` (or inline migration logic).
+- IF N → "Run `npx orchestrix-yuri migrate` manually, then retry `*resume`." and stop.
+
+### 1.3 No Memory Found
+
+IF neither `.yuri/identity.yaml` nor `.yuri/memory.yaml` exists:
+- "No project state found in this directory. Use `*create` to start a new project."
+- Stop.
 
 ---
 
 ## Step 2: Display Status Summary
 
-Present current project state:
+Read from the four-layer structure:
+- `{project}/.yuri/identity.yaml` → project info
+- `{project}/.yuri/focus.yaml` → current phase, step, pulse
+- Check which `{project}/.yuri/state/phase{1-5}.yaml` files exist and their status.
+
+Present:
 
 ```
 ## 📊 Project Status
 
 | Item | Detail |
 |------|--------|
-| **Project** | {project.name} |
-| **Path** | {project.project_root} |
-| **Current Phase** | Phase {lifecycle.current_phase} |
-| **Current Step** | {lifecycle.current_step} |
-| **Last Active** | {timestamp from memory file mtime} |
+| **Project** | {identity.project.name} |
+| **Path** | {identity.project.root} |
+| **Current Phase** | Phase {focus.phase} |
+| **Current Step** | {focus.step} |
+| **Last Active** | {focus.updated_at} |
 
 ### Phase Progress
 | Phase | Status |
 |-------|--------|
-| 1. Create | {phase1_create} |
-| 2. Plan | {phase2_plan} |
-| 3. Develop | {phase3_develop} |
-| 4. Test | {phase4_test} |
-| 5. Deploy | {phase5_deploy} |
+| 1. Create | {state/phase1.yaml status or "N/A"} |
+| 2. Plan | {state/phase2.yaml status or "N/A"} |
+| 3. Develop | {state/phase3.yaml status or "N/A"} |
+| 4. Test | {state/phase4.yaml status or "N/A"} |
+| 5. Deploy | {state/phase5.yaml status or "N/A"} |
 ```
 
-If in Phase 3 (Develop), also show:
+IF in Phase 3 (Develop), also show:
 ```
 ### Development Progress
-- Stories: {stories_done}/{total_stories}
-- In Progress: {stories_in_progress}
-- Stuck Count: {stuck_count}
+- Stories: {by_status.done count}/{total_stories}
+- In Progress: {by_status.in_progress}
+- Stuck Count: {monitoring.stuck_count}
 ```
 
 ---
@@ -57,26 +79,28 @@ Perform diagnostic checks:
 
 1. **tmux sessions alive?**
 ```bash
-# Check planning session
-tmux has-session -t "{tmux.planning_session}" 2>/dev/null && echo "ALIVE" || echo "DEAD"
+# Check planning session (if recorded)
+PLAN_SESSION=$(read from focus.yaml → tmux.planning_session)
+test -n "$PLAN_SESSION" && tmux has-session -t "$PLAN_SESSION" 2>/dev/null && echo "ALIVE" || echo "DEAD"
 
-# Check dev session
-tmux has-session -t "{tmux.dev_session}" 2>/dev/null && echo "ALIVE" || echo "DEAD"
+# Check dev session (if recorded)
+DEV_SESSION=$(read from focus.yaml → tmux.dev_session)
+test -n "$DEV_SESSION" && tmux has-session -t "$DEV_SESSION" 2>/dev/null && echo "ALIVE" || echo "DEAD"
 ```
 
 2. **Expected files exist?**
-   - Check for output files of completed planning steps
-   - Check for story files if in development phase
+   - Check for output files of completed planning steps (if Phase 2+).
+   - Check for story files if in development phase (if Phase 3+).
 
 3. **Incomplete operations?**
-   - Any planning step marked `in_progress`?
-   - Any stories stuck in `InProgress` or `Review`?
+   - Any planning step in `state/phase2.yaml` marked `in_progress`?
+   - Any stories stuck in progress (from `state/phase3.yaml`)?
 
 Report findings:
 ```
 ### Recovery Diagnostics
-- Planning session: {ALIVE/DEAD}
-- Dev session: {ALIVE/DEAD}
+- Planning session: {ALIVE/DEAD/N/A}
+- Dev session: {ALIVE/DEAD/N/A}
 - Expected files: {all present / missing: list}
 - Incomplete operations: {none / list}
 ```
@@ -88,7 +112,7 @@ Report findings:
 Based on the interrupted state, present options:
 
 ```
-Detected interruption at Phase {n}, Step {m}.
+Detected interruption at Phase {n}, Step: {step}.
 
 Options:
   1. **Resume from checkpoint** — Continue from last saved state
@@ -108,9 +132,9 @@ Based on user's choice:
 
 ### Option 1: Resume from checkpoint
 
-1. Load the latest checkpoint from `.yuri/checkpoints/`
-2. Recreate any needed tmux sessions using `ensure-session.sh`
-3. Call the appropriate phase task file with resume context:
+1. Load the latest checkpoint from `{project}/.yuri/checkpoints/`.
+2. Recreate any needed tmux sessions using `ensure-session.sh`.
+3. Call the appropriate phase task file:
    - Phase 2 → `tasks/yuri-plan-project.md` (will detect `in_progress` and resume)
    - Phase 3 → `tasks/yuri-develop-project.md` (will re-enter monitoring loop)
    - Phase 4 → `tasks/yuri-test-project.md` (will resume from last untested epic)
@@ -118,15 +142,24 @@ Based on user's choice:
 
 ### Option 2: Re-execute current step
 
-1. Reset the current step status to `pending` in memory
-2. Recreate any needed tmux sessions
-3. Call the appropriate phase task file (step will re-run from beginning)
+1. Reset the current step status to `pending` in the appropriate `state/phaseN.yaml`.
+2. Recreate any needed tmux sessions.
+3. Call the appropriate phase task file (step will re-run from beginning).
 
 ### Option 3: Skip to next phase
 
-1. Mark current phase as `complete` in memory
-2. Write checkpoint
-3. Advance `lifecycle.current_phase` by 1
-4. Call the next phase task file
+1. Mark current phase as `complete` in `state/phaseN.yaml`.
+2. Write checkpoint → `checkpoints/phaseN.yaml`.
+3. Advance `{project}/.yuri/focus.yaml` → `phase` by 1.
+4. Append phase_completed event to timeline.
+5. Call the next phase task file.
 
 After any option, save updated memory immediately.
+
+---
+
+## Final Step: Close Out
+
+Read [_close-out.md](tasks/_close-out.md) and execute it fully.
+
+Note: Resume itself does not complete a phase. F.2-F.4 (Phase Reflect, Consolidate, Decay) will only trigger if the resumed task subsequently completes a phase.

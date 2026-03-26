@@ -1,0 +1,10 @@
+# Portfolio Priorities — project priority ranking
+# Location: ~/.yuri/portfolio/priorities.yaml
+# Updated when boss changes priorities or deadlines.
+
+priority_order: []
+# - project-id-1
+# - project-id-2
+
+reasoning: ""
+updated_at: ""

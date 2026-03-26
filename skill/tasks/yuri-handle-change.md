@@ -5,22 +5,28 @@
 
 ---
 
-## Step 0: Load Memory and Context
+## Step 0: Wake Up
 
-1. Read `.yuri/memory.yaml` — restore project context
-2. Set `PROJECT_DIR` from `project.project_root`
-3. Determine current phase from `lifecycle.current_phase`
-4. Extract the change description from the user's command argument
+Read [_wake-up.md](tasks/_wake-up.md) and execute it fully.
+
+After Wake Up:
+1. Set `PROJECT_DIR` from `{project}/.yuri/identity.yaml` → `project.root`.
+2. Determine current phase from `{project}/.yuri/focus.yaml` → `phase`.
+3. Extract the change description from the user's command argument.
 
 Update memory:
-- `lifecycle.current_step` → "change_management"
-- Save immediately
+- `{project}/.yuri/focus.yaml` → `step: "change_management"`, `action: "assessing change scope"`, `updated_at: now`
+- Save immediately.
 
 ---
 
 ## Step 1: Scope Assessment
 
 Assess the change size based on the current phase and change description.
+
+Also consult:
+- `{project}/.yuri/knowledge/decisions.md` — does the change conflict with existing architecture decisions?
+- `~/.yuri/wisdom/workflow.md` — any past lessons about similar changes?
 
 ### Scope Assessment Matrix
 
@@ -59,7 +65,7 @@ Wait for user confirmation.
 No planning session needed. Use Dev directly:
 
 ```bash
-SESSION="{tmux.dev_session}"
+SESSION="{from focus.yaml → tmux.dev_session}"
 # Ensure dev session is alive
 SCRIPT_DIR="${CLAUDE_SKILL_DIR}/scripts"
 SESSION=$(bash "$SCRIPT_DIR/ensure-session.sh" dev "$PROJECT_DIR")
@@ -209,18 +215,17 @@ When all new stories complete → Phase 4 testing → Phase 5 incremental deploy
 
 ## Step 3: Record Change
 
-Save change record to memory regardless of scope:
-
-```yaml
-changes.history:
-  - timestamp: "{ISO 8601}"
-    phase: {current_phase}
-    description: "{change_description}"
-    scope: "{small/medium/large}"
-    action_taken: "{what was done}"
+Append event to `{project}/.yuri/timeline/events.jsonl`:
+```jsonl
+{"ts":"{ISO-8601}","type":"change_request","phase":{current_phase},"scope":"{small/medium/large}","desc":"{change_description}","action":"{what_was_done}"}
 ```
 
-Save memory immediately.
+Update `{project}/.yuri/focus.yaml`:
+- `step` → restore to pre-change step
+- `action` → "change handled, resuming {phase_name}"
+- `updated_at` → now
+
+Save immediately.
 
 ---
 
@@ -237,3 +242,11 @@ Report to user:
 Action taken: {action_summary}
 Resuming {current_phase_name}...
 ```
+
+---
+
+## Final Step: Close Out
+
+Read [_close-out.md](tasks/_close-out.md) and execute it fully.
+
+Change management often reveals priority signals and user preferences — Observe and Reflect are important here.

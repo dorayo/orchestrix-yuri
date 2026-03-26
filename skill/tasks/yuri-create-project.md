@@ -7,22 +7,29 @@
 
 ## Prerequisites
 
-- None (this is the entry point)
+- `~/.yuri/self.yaml` must exist (run `npx orchestrix-yuri install` if missing).
 
 ## Resource Directory
 
 ```bash
 RESOURCE_DIR="${CLAUDE_SKILL_DIR}/resources"
-# Resolves to: ~/.claude/skills/yuri/resources/
+TEMPLATES_DIR="${CLAUDE_SKILL_DIR}/templates"
 ```
 
 ---
 
-## Step 0: Check Resumption
+## Step 0: Wake Up
 
-- If `.yuri/memory.yaml` exists AND `phase1_create: complete` → offer skip to Phase 2
-- If `.yuri/memory.yaml` exists AND `phase1_create: in_progress` → resume from last saved step
-- Otherwise → proceed to Step 1
+Read [_wake-up.md](tasks/_wake-up.md) and execute it fully.
+
+For Phase 1 (create), no project L2 exists yet. Step 0.3 is skipped — only load L1 (global context).
+
+**Resumption check after Wake Up:**
+- IF the current working directory contains `.yuri/identity.yaml` AND `.yuri/state/phase1.yaml` with `status: complete`:
+  → Offer to skip to Phase 2.
+- IF `.yuri/state/phase1.yaml` exists with `status: in_progress`:
+  → Resume from the last completed step.
+- Otherwise → proceed to Step 1.
 
 ---
 
@@ -82,7 +89,9 @@ mkdir -p "$PROJECT_DIR/docs"
 mkdir -p "$PROJECT_DIR/.claude/commands"
 mkdir -p "$PROJECT_DIR/.claude/hooks"
 mkdir -p "$PROJECT_DIR/.orchestrix-core/scripts"
-mkdir -p "$PROJECT_DIR/.yuri/phase-logs"
+mkdir -p "$PROJECT_DIR/.yuri/knowledge"
+mkdir -p "$PROJECT_DIR/.yuri/state"
+mkdir -p "$PROJECT_DIR/.yuri/timeline"
 mkdir -p "$PROJECT_DIR/.yuri/checkpoints"
 ```
 
@@ -169,21 +178,89 @@ If a `.gitignore.template` exists in resources, use that instead.
 
 ---
 
-## Step 9: Initialize Memory
+## Step 9: Initialize Memory (Four-Layer Structure)
 
-Read the memory template from `${CLAUDE_SKILL_DIR}/templates/memory.template.yaml` and populate it with collected data:
+### 9.1 Project Identity
 
+Read `$TEMPLATES_DIR/identity.template.yaml`. Populate fields:
 - `project.name` → project name
-- `project.dir_name` → kebab-case directory name
-- `project.project_root` → absolute path to project directory
-- `project.license_key` → collected key or empty
+- `project.root` → absolute path to `$PROJECT_DIR`
 - `project.description` → core problem statement
 - `project.created_at` → current ISO 8601 timestamp
-- `lifecycle.current_phase` → 1
-- `lifecycle.current_step` → "phase1.step9.memory_init"
-- `lifecycle.phase_status.phase1_create` → "in_progress"
+- `project.license_key` → collected key or empty
 
-Write → `$PROJECT_DIR/.yuri/memory.yaml`
+Write → `$PROJECT_DIR/.yuri/identity.yaml`
+
+### 9.2 Project Focus
+
+Read `$TEMPLATES_DIR/project-focus.template.yaml`. Set:
+- `phase` → 1
+- `step` → "creating"
+- `action` → "initializing project skeleton"
+- `pulse` → "Phase 1: project creation in progress"
+- `updated_at` → current ISO 8601 timestamp
+
+Write → `$PROJECT_DIR/.yuri/focus.yaml`
+
+### 9.3 Phase 1 State
+
+Read `$TEMPLATES_DIR/phase1.template.yaml`. Set:
+- `status` → "in_progress"
+- `created_at` → current ISO 8601 timestamp
+- `collected.name` → project name
+- `collected.dir_name` → kebab-case directory name
+- `collected.license_key` → collected key or empty
+- `collected.description` → core problem statement
+
+Write → `$PROJECT_DIR/.yuri/state/phase1.yaml`
+
+### 9.4 Timeline
+
+Create empty `$PROJECT_DIR/.yuri/timeline/events.jsonl`.
+Append first event:
+```jsonl
+{"ts":"{ISO-8601}","type":"phase_started","phase":1,"detail":"Project created: {project_name}"}
+```
+
+### 9.5 Knowledge Directory
+
+Create placeholder files:
+```bash
+echo "# Architecture Decisions" > "$PROJECT_DIR/.yuri/knowledge/decisions.md"
+echo "# Domain Knowledge" > "$PROJECT_DIR/.yuri/knowledge/domain.md"
+echo "# Project Insights" > "$PROJECT_DIR/.yuri/knowledge/insights.md"
+```
+
+### 9.6 Register in Portfolio
+
+Read `~/.yuri/portfolio/registry.yaml`.
+Append to the `projects` array:
+```yaml
+- id: "{dir-name}"
+  name: "{project-name}"
+  root: "{absolute-path}"
+  phase: 1
+  status: active
+  pulse: "Phase 1: creating project"
+  started_at: "{ISO-8601}"
+```
+Write back `~/.yuri/portfolio/registry.yaml`.
+
+### 9.7 Update Global Focus
+
+Read `~/.yuri/focus.yaml`. Set:
+- `active_project` → `{dir-name}`
+- `active_action` → "creating project: {project-name}"
+- `updated_at` → current ISO 8601 timestamp
+
+Add to `attention_queue` if not already present:
+```yaml
+- project: "{dir-name}"
+  urgency: medium
+  next: "Phase 1 create completing"
+```
+
+Write back `~/.yuri/focus.yaml`.
 
 ---
 
@@ -196,13 +273,14 @@ git commit -m "chore: init project with Orchestrix
 - Project brief generated from interactive session
 - Orchestrix infrastructure: MCP config, hooks, slash commands
 - Core config with project-specific settings
+- Four-layer Yuri memory system initialized
 
 🤖 Generated with [Orchestrix](https://orchestrix-mcp.youlidao.ai)"
 ```
 
 ---
 
-## Step 11: Output Result
+## Step 11: Output Result and Complete Phase
 
 Display to the user:
 
@@ -219,6 +297,7 @@ Display to the user:
 - `.claude/commands/o-status.md` — /o-status command
 - `.orchestrix-core/core-config.yaml` — Project config
 - `.orchestrix-core/scripts/start-orchestrix.sh` — tmux multi-window automation
+- `.yuri/` — Four-layer memory system
 - `.gitignore` — Git ignore rules
 ```
 
@@ -230,11 +309,13 @@ Apply at: https://orchestrix-mcp.youlidao.ai
 ```
 
 Update memory:
-- `lifecycle.phase_status.phase1_create` → "complete"
-- `lifecycle.current_phase` → 1
-- `lifecycle.current_step` → "phase1.complete"
-
-Save checkpoint → `.yuri/checkpoints/checkpoint-phase1.yaml`
+1. Set `$PROJECT_DIR/.yuri/state/phase1.yaml` → `status: complete`, `completed_at: {ISO-8601}`
+2. Set `$PROJECT_DIR/.yuri/focus.yaml` → `step: "phase1.complete"`, `pulse: "Phase 1 complete, ready for planning"`
+3. Update `~/.yuri/portfolio/registry.yaml` → this project's `pulse` → "Phase 1 complete"
+4. Append to `$PROJECT_DIR/.yuri/timeline/events.jsonl`:
+   ```jsonl
+   {"ts":"{ISO-8601}","type":"phase_completed","phase":1}
+   ```
 
 ---
 
@@ -256,3 +337,15 @@ Reply: **Y** (start now) or **N** (plan manually later)
 
 - If Y → execute `tasks/yuri-plan-project.md`
 - If N → save state, end with reminder: "Run `/yuri *plan` when ready."
+
+---
+
+## Final Step: Close Out
+
+Read [_close-out.md](tasks/_close-out.md) and execute it fully.
+
+Phase 1 completes in Step 11, so the Close Out will trigger:
+- F.1 Reflect (process any inbox observations)
+- F.2 Phase Reflect (extract knowledge from Phase 1 timeline — minimal at this stage)
+- F.3 Consolidate (check for universal insights — minimal at this stage)
+- F.4 Decay (no-op for first project)

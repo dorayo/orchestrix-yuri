@@ -1,0 +1,14 @@
+# Phase 4: Test — state file
+# Location: {project}/.yuri/state/phase4.yaml
+
+status: pending
+started_at: ""
+completed_at: ""
+
+epics: []
+# - id: epic-id
+#   status: pending | passed | failed
+#   rounds: 0
+#   last_tested_at: ""
+
+regression_rounds: 0

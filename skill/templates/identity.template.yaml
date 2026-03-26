@@ -1,0 +1,12 @@
+# Project Identity
+# Location: {project}/.yuri/identity.yaml
+# Written once during *create, rarely updated.
+
+project:
+  name: ""
+  root: ""
+  stack: ""
+  domain: ""
+  description: ""
+  created_at: ""
+  license_key: ""

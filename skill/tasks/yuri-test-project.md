@@ -1,48 +1,58 @@
 # Phase 4: Test Project
 
 **Command**: `*test`
-**Purpose**: Run smoke tests on each epic via the QA agent, fix failures through the Dev agent, and verify all epics pass.
+**Purpose**: Run smoke tests per epic, fix bugs via Dev agent, and run regression tests until all epics pass.
 
 ---
 
 ## Prerequisites
 
-- Phase 3 (Develop) must be complete
-- Dev tmux session must be running (or will be recreated)
-- `.yuri/memory.yaml` must exist with `phase3_develop: complete`
+- Phase 3 (Develop) must be complete.
+- `{project}/.yuri/state/phase3.yaml` must have `status: complete`.
 
 ---
 
-## Step 0: Load Memory and Collect Epic List
+## Step 0: Wake Up
 
-1. Read `.yuri/memory.yaml` — restore project context
-2. Verify `lifecycle.phase_status.phase3_develop == complete`
-   - If not → "Phase 3 not complete. Run `*develop` first."
-3. Set `PROJECT_DIR` from `project.project_root`
-4. Collect epic list from sharded PRD files:
+Read [_wake-up.md](tasks/_wake-up.md) and execute it fully.
+
+After Wake Up, validate:
+1. Read `{project}/.yuri/state/phase3.yaml` → verify `status` = `complete`.
+   - IF not → "Phase 3 not complete. Run `*develop` first." and stop.
+2. Set `PROJECT_DIR` from `{project}/.yuri/identity.yaml` → `project.root`.
+3. Collect epic list:
 ```bash
-ls "$PROJECT_DIR/docs/prd/epic-"*.yaml 2>/dev/null | sed 's/.*epic-//' | sed 's/\.yaml//'
+EPICS=$(ls "$PROJECT_DIR/docs/prd/epic-"*.yaml 2>/dev/null | sed 's/.*epic-//' | sed 's/\.yaml//')
 ```
-5. If `phase4_test == in_progress` → resume from last untested epic
-6. If `phase4_test == complete` → offer skip to Phase 5
+
+**Resumption check:**
+- IF `{project}/.yuri/state/phase4.yaml` exists with `status: in_progress`:
+  → Find last untested epic → resume from there.
+- IF `{project}/.yuri/state/phase4.yaml` exists with `status: complete`:
+  → Offer to skip to Phase 5.
+- OTHERWISE → initialize `state/phase4.yaml` from `$TEMPLATES_DIR/phase4.template.yaml`.
 
 Update memory:
-- `lifecycle.current_phase` → 4
-- `lifecycle.phase_status.phase4_test` → "in_progress"
-- Save immediately
+- `{project}/.yuri/focus.yaml` → `phase: 4`, `step: "testing"`, `action: "starting smoke tests"`, `updated_at: now`
+- `{project}/.yuri/state/phase4.yaml` → `status: "in_progress"`, `started_at: now`
+- Initialize `epics` array with all epic IDs, each `status: pending`.
+- `~/.yuri/focus.yaml` → `active_action: "testing project: {name}"`, `updated_at: now`
+- Append to `{project}/.yuri/timeline/events.jsonl`:
+  ```jsonl
+  {"ts":"{ISO-8601}","type":"phase_started","phase":4,"epic_count":{count}}
+  ```
+- Save all files immediately.
 
-Ensure dev session is alive:
+---
+
+## Step 1: Ensure Dev Session + Reload QA Agent
+
 ```bash
 SCRIPT_DIR="${CLAUDE_SKILL_DIR}/scripts"
 SESSION=$(bash "$SCRIPT_DIR/ensure-session.sh" dev "$PROJECT_DIR")
 ```
 
----
-
-## Step 1: Reload QA Agent
-
-Reload the QA agent in a clean state:
-
+Reload QA agent in clean state:
 ```bash
 tmux send-keys -t "$SESSION:3" "/clear" Enter
 sleep 2
@@ -50,41 +60,38 @@ tmux send-keys -t "$SESSION:3" "/o qa" Enter
 sleep 12
 ```
 
-Report to user:
-```
-🧪 QA agent reloaded. Starting smoke tests...
-```
+Update `{project}/.yuri/focus.yaml` → `tmux.dev_session: "$SESSION"`.
 
 ---
 
 ## Step 2: Smoke Test Each Epic
 
-FOR EACH `epic_id` in the epic list:
+FOR EACH `EPIC_ID` in the epic list:
 
-### 2.1 Send Smoke Test Command
+### 2.1 Run Smoke Test
 
 ```bash
 tmux send-keys -t "$SESSION:3" "*smoke-test $EPIC_ID" Enter
 ```
 
-### 2.2 Monitor QA Completion
-
+Monitor completion:
 ```bash
 SCRIPT_DIR="${CLAUDE_SKILL_DIR}/scripts"
 RESULT=$(bash "$SCRIPT_DIR/monitor-agent.sh" "$SESSION" 3 "" 30 30)
 ```
 
-Use the same detection strategy (completion message → idle → stability).
+### 2.2 Evaluate Result
 
-### 2.3 Parse Results
+Capture QA output:
+```bash
+tmux capture-pane -t "$SESSION:3" -p -S -100
+```
 
-Check for smoke test evidence in `docs/qa/evidence/`.
+Parse for PASS/FAIL indicators.
 
-### 2.4 IF FAIL
+### 2.3 Handle FAIL
 
-Extract bug descriptions from QA output.
-
-FOR EACH bug:
+IF test failed, extract bug descriptions from QA output. Then:
 
 1. Reload Dev agent:
 ```bash
@@ -94,79 +101,79 @@ tmux send-keys -t "$SESSION:2" "/o dev" Enter
 sleep 12
 ```
 
-2. Send quick-fix:
+2. Send quick-fix command:
 ```bash
-tmux send-keys -t "$SESSION:2" "*quick-fix \"$BUG_DESCRIPTION\"" Enter
+tmux send-keys -t "$SESSION:2" "*quick-fix \"$BUG_DESC\"" Enter
 ```
 
-3. Monitor Dev completion:
-```bash
-RESULT=$(bash "$SCRIPT_DIR/monitor-agent.sh" "$SESSION" 2 "" 30 30)
-```
+3. Monitor Dev completion.
+4. Retest: send `*smoke-test $EPIC_ID` to QA again.
+5. Maximum 3 regression rounds per epic. IF still failing after 3 rounds:
+   - Mark epic as `failed` in `state/phase4.yaml`.
+   - Report to user with diagnostics.
+   - Continue to next epic.
 
-After all bugs fixed, run regression test:
+### 2.4 Handle PASS
 
-1. Reload QA:
-```bash
-tmux send-keys -t "$SESSION:3" "/clear" Enter
-sleep 2
-tmux send-keys -t "$SESSION:3" "/o qa" Enter
-sleep 12
-```
-
-2. Re-run smoke test:
-```bash
-tmux send-keys -t "$SESSION:3" "*smoke-test $EPIC_ID" Enter
-```
-
-3. Monitor and check results again
-4. Increment `regression_rounds`
-
-IF `regression_rounds > 3`:
-- Escalate to user with full diagnostics
-- Include QA evidence and Dev fix attempts
-- Wait for user guidance
-
-### 2.5 IF PASS
-
-Mark epic as passed in memory:
+Update `{project}/.yuri/state/phase4.yaml`:
 ```yaml
-testing.epics[n].status: passed
-testing.epics[n].rounds: {round_count}
+epics[n].status: passed
+epics[n].rounds: {round_count}
+epics[n].last_tested_at: "{ISO-8601}"
 ```
+
+Append to `{project}/.yuri/timeline/events.jsonl`:
+```jsonl
+{"ts":"{ISO-8601}","type":"epic_tested","id":"{epic_id}","result":"passed","rounds":{n}}
+```
+
+Update `{project}/.yuri/focus.yaml`:
+- `pulse` → "Phase 4: {passed}/{total} epics passed"
+- `updated_at` → now
+
+Update `~/.yuri/portfolio/registry.yaml` → this project's `pulse`.
 
 Report:
 ```
-✅ Epic {epic_id} passed smoke test ({rounds} round(s))
+✅ Epic {EPIC_ID} passed ({round_count} round(s))
 ```
 
-Proceed to next epic.
+### 2.5 Observe
+
+Check if any signals occurred during testing (user feedback, tech lessons from bugs).
+IF signal detected → append to `~/.yuri/inbox.jsonl`.
 
 ---
 
-## Step 3: All Epics Pass
+## Step 3: All Epics Tested
 
-1. Save checkpoint:
-- `lifecycle.phase_status.phase4_test` → "complete"
-- `lifecycle.current_step` → "phase4.complete"
-- Write checkpoint → `.yuri/checkpoints/checkpoint-phase4.yaml`
+1. Check results: count passed vs failed.
 
-2. Report:
+2. IF all passed:
+   - `{project}/.yuri/state/phase4.yaml` → `status: "complete"`, `completed_at: now`
+   - `{project}/.yuri/focus.yaml` → `step: "phase4.complete"`, `pulse: "Phase 4 complete, all epics passed"`
+   - Append: `{"ts":"...","type":"phase_completed","phase":4}` to timeline.
+
+3. IF some failed:
+   - Report failed epics to user.
+   - Ask: "Retry failed epics, skip to deploy, or pause?"
+   - IF retry → re-enter Step 2 for failed epics only.
+   - IF skip → mark phase complete with note about failures.
+   - IF pause → save state, stop.
+
+4. Present deployment options:
 ```
-## ✅ Testing Phase Complete
-
-All epics passed smoke testing:
-
-| Epic | Status | Rounds |
-|------|--------|--------|
-| {id} | ✅ Pass | {n} |
-| ... | ... | ... |
-```
-
-3. Present deployment options:
-```
-🚀 Ready to deploy! Run `/yuri *deploy` to see deployment options.
+🚀 All smoke tests passed! Ready to deploy? (Y/N)
 ```
 
-- If user confirms → execute `tasks/yuri-deploy-project.md`
-- If user declines → save state, end with reminder
+- If Y → execute `tasks/yuri-deploy-project.md`
+- If N → save state, end with reminder: "Run `/yuri *deploy` when ready."
+
+---
+
+## Final Step: Close Out
+
+Read [_close-out.md](tasks/_close-out.md) and execute it fully.
+
+Phase 4 completes in Step 3, so the Close Out will trigger F.1-F.4.
+Testing phase often reveals technical insights (bug patterns, fragile areas) — Phase Reflect should capture these.

@@ -1,0 +1,13 @@
+# Boss Preferences — communication and workflow preferences
+# Location: ~/.yuri/boss/preferences.yaml
+# Populated over time via Observe engine. Never overwrite on reinstall.
+
+communication:
+  language: ""
+  update_frequency: ""
+  format: ""
+
+workflow:
+  pr_size: ""
+  deploy_region: ""
+  testing: ""

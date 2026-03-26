@@ -1,0 +1,19 @@
+# Portfolio Relationships — cross-project dependencies and synergies
+# Location: ~/.yuri/portfolio/relationships.yaml
+# Updated during Consolidate engine at phase boundaries.
+
+dependencies: []
+# - from: project-a
+#   to: project-b
+#   type: data | api | auth
+#   detail: ""
+
+synergies: []
+# - projects: [project-a, project-b]
+#   type: tech_stack | domain | component
+#   detail: ""
+
+conflicts: []
+# - projects: [project-a, project-b]
+#   type: resource | schedule
+#   detail: ""

@@ -1,0 +1,14 @@
+# Project Focus — current operational state
+# Location: {project}/.yuri/focus.yaml
+# Updated after every operation within this project.
+
+phase: 0
+step: ""
+action: ""
+blocked: false
+pulse: ""
+updated_at: ""
+
+tmux:
+  planning_session: ""
+  dev_session: ""
