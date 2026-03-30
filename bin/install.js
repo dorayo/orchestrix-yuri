@@ -12,7 +12,7 @@ if (command === 'install') {
 } else if (command === 'migrate') {
   const projectRoot = args[1] || process.cwd();
   migrate(projectRoot);
-} else if (command === 'serve') {
+} else if (command === 'start' || command === 'serve') {
   // Delegate to serve.js with remaining args
   require('./serve');
 } else if (command === '--version' || command === '-v' || command === '-V') {
@@ -23,20 +23,22 @@ if (command === 'install') {
   orchestrix-yuri — Meta-Orchestrator for Orchestrix
 
   Usage:
-    npx orchestrix-yuri install              Install Yuri skill + global memory
-    npx orchestrix-yuri serve [options]       Start the Channel Gateway (Telegram/Feishu)
-    npx orchestrix-yuri migrate [path]       Migrate legacy memory.yaml to four-layer structure
-    npx orchestrix-yuri --version             Show version
-    npx orchestrix-yuri --help               Show this help message
+    orchestrix-yuri install                    Install Yuri skill + global memory
+    orchestrix-yuri start                      Start the Channel Gateway
+    orchestrix-yuri start --token TOKEN        Start & save Telegram Bot token (first time only)
+    orchestrix-yuri migrate [path]             Migrate legacy memory.yaml
+    orchestrix-yuri --version                  Show version
+    orchestrix-yuri --help                     Show this help message
 
-  Serve options:
-    --telegram-token TOKEN   Telegram Bot API token
-    --port PORT              Server port (default: 7890)
+  Quick start:
+    orchestrix-yuri install
+    orchestrix-yuri start --token "123456:ABC-DEF..."   # first time, saves token
+    orchestrix-yuri start                                # from now on, just this
 
   After installation, type /yuri in any Claude Code session to activate.
   `);
 } else {
   console.error(`Unknown command: ${command}`);
-  console.error('Run "npx orchestrix-yuri --help" for usage information.');
+  console.error('Run "orchestrix-yuri --help" for usage information.');
   process.exit(1);
 }
