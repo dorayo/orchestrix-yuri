@@ -15,6 +15,9 @@ if (command === 'install') {
 } else if (command === 'serve') {
   // Delegate to serve.js with remaining args
   require('./serve');
+} else if (command === '--version' || command === '-v' || command === '-V') {
+  const { version } = require('../package.json');
+  console.log(version);
 } else if (command === '--help' || command === '-h' || !command) {
   console.log(`
   orchestrix-yuri — Meta-Orchestrator for Orchestrix
@@ -23,6 +26,7 @@ if (command === 'install') {
     npx orchestrix-yuri install              Install Yuri skill + global memory
     npx orchestrix-yuri serve [options]       Start the Channel Gateway (Telegram/Feishu)
     npx orchestrix-yuri migrate [path]       Migrate legacy memory.yaml to four-layer structure
+    npx orchestrix-yuri --version             Show version
     npx orchestrix-yuri --help               Show this help message
 
   Serve options:
