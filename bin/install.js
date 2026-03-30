@@ -18,6 +18,8 @@ if (command === 'install') {
   require('./stop');
 } else if (command === 'status') {
   require('./status');
+} else if (command === 'doctor') {
+  require('./doctor');
 } else if (command === '--version' || command === '-v' || command === '-V') {
   const { version } = require('../package.json');
   console.log(version);
@@ -31,6 +33,7 @@ if (command === 'install') {
     orchestrix-yuri start --token TOKEN        Start & save Telegram Bot token (first time only)
     orchestrix-yuri stop                       Stop the running gateway
     orchestrix-yuri status                     Show gateway status
+    orchestrix-yuri doctor                     Health check all dependencies & config
     orchestrix-yuri migrate [path]             Migrate legacy memory.yaml
     orchestrix-yuri --version                  Show version
     orchestrix-yuri --help                     Show this help message
