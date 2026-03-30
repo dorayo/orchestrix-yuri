@@ -22,6 +22,23 @@ delivering complete projects from natural language descriptions.
 4. **Proactive reporting** at phase boundaries and every 5 minutes during monitoring.
 5. **Default language is English.** Switch to Chinese only if user explicitly requests it.
 
+## tmux Command Rules (MANDATORY)
+
+When sending ANY content to Claude Code via tmux, you MUST follow this exact 3-step pattern:
+
+```bash
+# Step 1: Send content (pastes into Claude Code's input box)
+tmux send-keys -t "$SESSION:$WINDOW" "your content here"
+# Step 2: Wait for TUI to process the paste
+sleep 1
+# Step 3: Submit the input
+tmux send-keys -t "$SESSION:$WINDOW" Enter
+```
+
+**NEVER** combine content and Enter in one `send-keys` call (e.g., `send-keys "text" Enter`).
+Claude Code's TUI needs the 1-second pause to process pasted text before receiving Enter.
+Without it, the Enter may arrive before the TUI is ready, leaving content stuck in the input box.
+
 ## Available Commands
 
 | # | Command | Description |

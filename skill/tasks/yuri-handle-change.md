@@ -70,12 +70,18 @@ SESSION="{from focus.yaml → tmux.dev_session}"
 SCRIPT_DIR="${CLAUDE_SKILL_DIR}/scripts"
 SESSION=$(bash "$SCRIPT_DIR/ensure-session.sh" dev "$PROJECT_DIR")
 
-# Send to Dev
-tmux send-keys -t "$SESSION:2" "/clear" Enter
+# Send to Dev (3-step pattern: content → sleep → Enter)
+tmux send-keys -t "$SESSION:2" "/clear"
+sleep 1
+tmux send-keys -t "$SESSION:2" Enter
 sleep 2
-tmux send-keys -t "$SESSION:2" "/o dev" Enter
+tmux send-keys -t "$SESSION:2" "/o dev"
+sleep 1
+tmux send-keys -t "$SESSION:2" Enter
 sleep 12
-tmux send-keys -t "$SESSION:2" "*solo \"$CHANGE_DESCRIPTION\"" Enter
+tmux send-keys -t "$SESSION:2" "*solo \"$CHANGE_DESCRIPTION\""
+sleep 1
+tmux send-keys -t "$SESSION:2" Enter
 ```
 
 Monitor Dev completion, then resume normal Phase 3 monitoring.
@@ -91,29 +97,45 @@ SCRIPT_DIR="${CLAUDE_SKILL_DIR}/scripts"
 PLAN_SESSION=$(bash "$SCRIPT_DIR/ensure-session.sh" planning "$PROJECT_DIR")
 
 # 2. Activate PO and route change
-tmux send-keys -t "$PLAN_SESSION:0" "/o po" Enter
+tmux send-keys -t "$PLAN_SESSION:0" "/o po"
+sleep 1
+tmux send-keys -t "$PLAN_SESSION:0" Enter
 sleep 15
-tmux send-keys -t "$PLAN_SESSION:0" "*route-change \"$CHANGE_DESCRIPTION\"" Enter
+tmux send-keys -t "$PLAN_SESSION:0" "*route-change \"$CHANGE_DESCRIPTION\""
+sleep 1
+tmux send-keys -t "$PLAN_SESSION:0" Enter
 ```
 
 Wait for PO routing result. Then:
 
 - IF routes to **Architect**:
 ```bash
-tmux send-keys -t "$PLAN_SESSION:0" "/clear" Enter
+tmux send-keys -t "$PLAN_SESSION:0" "/clear"
+sleep 1
+tmux send-keys -t "$PLAN_SESSION:0" Enter
 sleep 2
-tmux send-keys -t "$PLAN_SESSION:0" "/o architect" Enter
+tmux send-keys -t "$PLAN_SESSION:0" "/o architect"
+sleep 1
+tmux send-keys -t "$PLAN_SESSION:0" Enter
 sleep 15
-tmux send-keys -t "$PLAN_SESSION:0" "*resolve-change" Enter
+tmux send-keys -t "$PLAN_SESSION:0" "*resolve-change"
+sleep 1
+tmux send-keys -t "$PLAN_SESSION:0" Enter
 ```
 
 - IF routes to **PM**:
 ```bash
-tmux send-keys -t "$PLAN_SESSION:0" "/clear" Enter
+tmux send-keys -t "$PLAN_SESSION:0" "/clear"
+sleep 1
+tmux send-keys -t "$PLAN_SESSION:0" Enter
 sleep 2
-tmux send-keys -t "$PLAN_SESSION:0" "/o pm" Enter
+tmux send-keys -t "$PLAN_SESSION:0" "/o pm"
+sleep 1
+tmux send-keys -t "$PLAN_SESSION:0" Enter
 sleep 15
-tmux send-keys -t "$PLAN_SESSION:0" "*revise-prd" Enter
+tmux send-keys -t "$PLAN_SESSION:0" "*revise-prd"
+sleep 1
+tmux send-keys -t "$PLAN_SESSION:0" Enter
 ```
 
 Wait for Proposal output (PCP/TCP).
@@ -123,11 +145,17 @@ Then switch to dev session:
 DEV_SESSION=$(bash "$SCRIPT_DIR/ensure-session.sh" dev "$PROJECT_DIR")
 
 # In SM window: apply proposal
-tmux send-keys -t "$DEV_SESSION:1" "/clear" Enter
+tmux send-keys -t "$DEV_SESSION:1" "/clear"
+sleep 1
+tmux send-keys -t "$DEV_SESSION:1" Enter
 sleep 2
-tmux send-keys -t "$DEV_SESSION:1" "/o sm" Enter
+tmux send-keys -t "$DEV_SESSION:1" "/o sm"
+sleep 1
+tmux send-keys -t "$DEV_SESSION:1" Enter
 sleep 12
-tmux send-keys -t "$DEV_SESSION:1" "*apply-proposal {proposal_id}" Enter
+tmux send-keys -t "$DEV_SESSION:1" "*apply-proposal {proposal_id}"
+sleep 1
+tmux send-keys -t "$DEV_SESSION:1" Enter
 ```
 
 SM → Architect → Dev → QA auto-loop resumes.
@@ -160,9 +188,13 @@ SCRIPT_DIR="${CLAUDE_SKILL_DIR}/scripts"
 
 # Step 1: PM generates next-steps.md
 PLAN_SESSION=$(bash "$SCRIPT_DIR/ensure-session.sh" planning "$PROJECT_DIR")
-tmux send-keys -t "$PLAN_SESSION:0" "/o pm" Enter
+tmux send-keys -t "$PLAN_SESSION:0" "/o pm"
+sleep 1
+tmux send-keys -t "$PLAN_SESSION:0" Enter
 sleep 15
-tmux send-keys -t "$PLAN_SESSION:0" "*start-iteration" Enter
+tmux send-keys -t "$PLAN_SESSION:0" "*start-iteration"
+sleep 1
+tmux send-keys -t "$PLAN_SESSION:0" Enter
 ```
 
 Monitor PM completion. PM creates: `docs/prd/epic-*.yaml` + `docs/prd/*next-steps.md`
@@ -198,11 +230,17 @@ DEV_SESSION=$(bash "$SCRIPT_DIR/ensure-session.sh" dev "$PROJECT_DIR")
 ```
 3. In SM window (window 1) of dev session:
 ```bash
-tmux send-keys -t "$DEV_SESSION:1" "/clear" Enter
+tmux send-keys -t "$DEV_SESSION:1" "/clear"
+sleep 1
+tmux send-keys -t "$DEV_SESSION:1" Enter
 sleep 2
-tmux send-keys -t "$DEV_SESSION:1" "/o sm" Enter
+tmux send-keys -t "$DEV_SESSION:1" "/o sm"
+sleep 1
+tmux send-keys -t "$DEV_SESSION:1" Enter
 sleep 12
-tmux send-keys -t "$DEV_SESSION:1" "*draft" Enter
+tmux send-keys -t "$DEV_SESSION:1" "*draft"
+sleep 1
+tmux send-keys -t "$DEV_SESSION:1" Enter
 ```
 SM creates first story → handoff chain auto-starts (SM → Arch → Dev → QA)
 

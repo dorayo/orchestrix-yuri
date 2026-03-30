@@ -54,9 +54,13 @@ SESSION=$(bash "$SCRIPT_DIR/ensure-session.sh" dev "$PROJECT_DIR")
 
 Reload QA agent in clean state:
 ```bash
-tmux send-keys -t "$SESSION:3" "/clear" Enter
+tmux send-keys -t "$SESSION:3" "/clear"
+sleep 1
+tmux send-keys -t "$SESSION:3" Enter
 sleep 2
-tmux send-keys -t "$SESSION:3" "/o qa" Enter
+tmux send-keys -t "$SESSION:3" "/o qa"
+sleep 1
+tmux send-keys -t "$SESSION:3" Enter
 sleep 12
 ```
 
@@ -71,7 +75,9 @@ FOR EACH `EPIC_ID` in the epic list:
 ### 2.1 Run Smoke Test
 
 ```bash
-tmux send-keys -t "$SESSION:3" "*smoke-test $EPIC_ID" Enter
+tmux send-keys -t "$SESSION:3" "*smoke-test $EPIC_ID"
+sleep 1
+tmux send-keys -t "$SESSION:3" Enter
 ```
 
 Monitor completion:
@@ -95,15 +101,21 @@ IF test failed, extract bug descriptions from QA output. Then:
 
 1. Reload Dev agent:
 ```bash
-tmux send-keys -t "$SESSION:2" "/clear" Enter
+tmux send-keys -t "$SESSION:2" "/clear"
+sleep 1
+tmux send-keys -t "$SESSION:2" Enter
 sleep 2
-tmux send-keys -t "$SESSION:2" "/o dev" Enter
+tmux send-keys -t "$SESSION:2" "/o dev"
+sleep 1
+tmux send-keys -t "$SESSION:2" Enter
 sleep 12
 ```
 
 2. Send quick-fix command:
 ```bash
-tmux send-keys -t "$SESSION:2" "*quick-fix \"$BUG_DESC\"" Enter
+tmux send-keys -t "$SESSION:2" "*quick-fix \"$BUG_DESC\""
+sleep 1
+tmux send-keys -t "$SESSION:2" Enter
 ```
 
 3. Monitor Dev completion.

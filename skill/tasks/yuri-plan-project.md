@@ -91,21 +91,37 @@ sleep 2  # Wait for Claude Code to start
 
 **2.3** Activate agent and send command:
 ```bash
-tmux send-keys -t "$SESSION:$WINDOW_IDX" "/o {agent}" Enter
+# CRITICAL: Every tmux send-keys MUST follow the pattern:
+#   send-keys "content" → sleep 1 → send-keys Enter
+# Claude Code TUI needs time to process pasted text before Enter.
+# Sending content and Enter in one call can cause the Enter to be lost.
+
+tmux send-keys -t "$SESSION:$WINDOW_IDX" "/o {agent}"
+sleep 1
+tmux send-keys -t "$SESSION:$WINDOW_IDX" Enter
 sleep 10  # Wait for agent to load
-tmux send-keys -t "$SESSION:$WINDOW_IDX" "{command}" Enter
+
+tmux send-keys -t "$SESSION:$WINDOW_IDX" "{command}"
+sleep 1
+tmux send-keys -t "$SESSION:$WINDOW_IDX" Enter
 ```
 
-**2.3.1** When answering agent questions (multi-line text):
+**2.3.1** When answering agent questions or sending any text to agent windows:
 ```bash
-# Multi-line content is treated as a "paste" by Claude Code TUI.
-# It lands in the input buffer but does NOT auto-submit.
-# You MUST send Enter immediately after the content.
+# ALWAYS use this 3-step pattern for sending content to Claude Code:
+#   Step 1: send-keys "content"    (pastes text into input box)
+#   Step 2: sleep 1                (let TUI process the paste)
+#   Step 3: send-keys Enter        (submit the input)
+#
+# NEVER combine content and Enter in a single send-keys call.
+# NEVER skip the sleep — without it, Enter may arrive before TUI is ready.
+
 tmux send-keys -t "$SESSION:$WINDOW_IDX" "$(cat <<'EOF'
 your multi-line answer here
 EOF
-)" Enter
-# ^ Enter is CRITICAL — without it, content stays in input box
+)"
+sleep 1
+tmux send-keys -t "$SESSION:$WINDOW_IDX" Enter
 ```
 
 **IMPORTANT:** Do NOT use `/clear` within the planning phase. Each agent has its own
