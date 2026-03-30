@@ -4,8 +4,6 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { execSync } = require('child_process');
-
 const PID_FILE = path.join(os.homedir(), '.yuri', 'gateway.pid');
 
 function stop() {
@@ -22,7 +20,6 @@ function stop() {
   } catch {
     console.log(`  Gateway PID ${pid} is not running. Cleaning up stale PID file.`);
     fs.unlinkSync(PID_FILE);
-    cleanupTmux();
     process.exit(0);
   }
 
@@ -45,18 +42,9 @@ function stop() {
     } catch {
       // Dead, good
     }
-    cleanupTmux();
     try { fs.unlinkSync(PID_FILE); } catch {}
     console.log('  ✅ Gateway stopped.');
   }, 2000);
-}
-
-function cleanupTmux() {
-  try {
-    execSync('tmux kill-session -t yuri-gateway 2>/dev/null');
-  } catch {
-    // no session to kill
-  }
 }
 
 stop();

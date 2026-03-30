@@ -4,12 +4,11 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { execSync } = require('child_process');
 
 const PID_FILE = path.join(os.homedir(), '.yuri', 'gateway.pid');
+const SESSION_FILE = path.join(os.homedir(), '.yuri', 'gateway-session.json');
 
 function status() {
-  // Check PID
   let pid = null;
   let running = false;
 
@@ -23,31 +22,36 @@ function status() {
     }
   }
 
-  // Check tmux session
-  let tmuxAlive = false;
-  try {
-    execSync('tmux has-session -t yuri-gateway 2>/dev/null');
-    tmuxAlive = true;
-  } catch {
-    tmuxAlive = false;
+  // Check session
+  let sessionInfo = 'none';
+  if (fs.existsSync(SESSION_FILE)) {
+    try {
+      const s = JSON.parse(fs.readFileSync(SESSION_FILE, 'utf8'));
+      const age = Date.now() - new Date(s.savedAt).getTime();
+      if (age < 24 * 3600_000) {
+        sessionInfo = `${s.sessionId.slice(0, 8)}... (${s.messageCount || 0} messages)`;
+      } else {
+        sessionInfo = 'expired';
+      }
+    } catch { /* ignore */ }
+  }
+
+  // Check config
+  const configPath = path.join(os.homedir(), '.yuri', 'config', 'channels.yaml');
+  let tokenStatus = '\x1b[90mnot set\x1b[0m';
+  if (fs.existsSync(configPath)) {
+    const content = fs.readFileSync(configPath, 'utf8');
+    if (/token:\s*".+"/.test(content) || /token:\s*'.+'/.test(content)) {
+      tokenStatus = '\x1b[32mconfigured\x1b[0m';
+    }
   }
 
   console.log('');
   console.log('  Yuri Gateway Status');
   console.log('  ───────────────────');
   console.log(`  Gateway process:  ${running ? `\x1b[32mrunning\x1b[0m (PID ${pid})` : '\x1b[90mnot running\x1b[0m'}`);
-  console.log(`  tmux session:     ${tmuxAlive ? '\x1b[32myuri-gateway (active)\x1b[0m' : '\x1b[90mnone\x1b[0m'}`);
-
-  // Check config
-  const configPath = path.join(os.homedir(), '.yuri', 'config', 'channels.yaml');
-  if (fs.existsSync(configPath)) {
-    const content = fs.readFileSync(configPath, 'utf8');
-    const hasToken = /token:\s*".+"/.test(content) || /token:\s*'.+'/.test(content);
-    console.log(`  Telegram token:   ${hasToken ? '\x1b[32mconfigured\x1b[0m' : '\x1b[90mnot set\x1b[0m'}`);
-  } else {
-    console.log('  Config:           \x1b[90mnot found\x1b[0m');
-  }
-
+  console.log(`  Claude session:   ${sessionInfo}`);
+  console.log(`  Telegram token:   ${tokenStatus}`);
   console.log('');
 }
 
