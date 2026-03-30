@@ -1,6 +1,6 @@
 {
   "name": "orchestrix-yuri",
-  "version": "3.5.0",
+  "version": "4.0.0",
   "description": "Yuri — Meta-Orchestrator for Orchestrix. Drive your entire project lifecycle with natural language.",
   "main": "lib/installer.js",
   "bin": {
@@ -32,6 +32,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@larksuiteoapi/node-sdk": "^1.60.0",
     "grammy": "^1.41.1",
     "js-yaml": "^4.1.1"
   }

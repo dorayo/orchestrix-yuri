@@ -31,6 +31,7 @@ if (command === 'install') {
     orchestrix-yuri install                    Install Yuri skill + global memory
     orchestrix-yuri start                      Start the Channel Gateway
     orchestrix-yuri start --token TOKEN        Start & save Telegram Bot token (first time only)
+    orchestrix-yuri start --feishu-id ID --feishu-secret SEC  Start & save Feishu credentials
     orchestrix-yuri stop                       Stop the running gateway
     orchestrix-yuri status                     Show gateway status
     orchestrix-yuri doctor                     Health check all dependencies & config

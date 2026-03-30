@@ -202,11 +202,28 @@ function checkConfig() {
       info('Telegram not enabled');
     }
 
-    // Owner binding
+    // Telegram owner binding
     if (tg && tg.owner_chat_id) {
-      pass(`Owner bound: chat ${tg.owner_chat_id}`);
+      pass(`Telegram owner bound: chat ${tg.owner_chat_id}`);
+    } else if (tg && tg.enabled) {
+      info('No Telegram owner bound yet (will auto-bind on first /start)');
+    }
+
+    // Feishu
+    const fs_conf = config.channels && config.channels.feishu;
+    if (fs_conf && fs_conf.enabled && fs_conf.app_id && fs_conf.app_secret) {
+      pass(`Feishu App ID configured (${fs_conf.app_id.slice(0, 10)}...)`);
+    } else if (fs_conf && fs_conf.enabled && (!fs_conf.app_id || !fs_conf.app_secret)) {
+      fail('Feishu enabled but credentials incomplete', 'orchestrix-yuri start --feishu-id ID --feishu-secret SECRET');
     } else {
-      info('No owner bound yet (will auto-bind on first /start)');
+      info('Feishu not enabled');
+    }
+
+    // Feishu owner binding
+    if (fs_conf && fs_conf.owner_user_id) {
+      pass(`Feishu owner bound: ${fs_conf.owner_user_id}`);
+    } else if (fs_conf && fs_conf.enabled) {
+      info('No Feishu owner bound yet (will auto-bind on first message)');
     }
 
     // Engine
@@ -320,6 +337,16 @@ function checkNetwork() {
         else if (result === '401') fail('Telegram token is invalid (401)', 'Check your bot token with @BotFather');
         else if (result) warn(`Telegram API returned HTTP ${result}`);
         else warn('Cannot reach api.telegram.org (network issue?)');
+      }
+
+      // Feishu API
+      const fs_conf = config.channels && config.channels.feishu;
+      if (fs_conf && fs_conf.enabled && fs_conf.app_id && fs_conf.app_secret) {
+        const body = JSON.stringify({ app_id: fs_conf.app_id, app_secret: fs_conf.app_secret });
+        const result = cmd(`curl -s -o /dev/null -w "%{http_code}" -X POST "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal" -H "Content-Type: application/json" -d '${body}' 2>/dev/null`);
+        if (result === '200') pass('Feishu API reachable + credentials valid');
+        else if (result) warn(`Feishu API returned HTTP ${result}`);
+        else warn('Cannot reach open.feishu.cn (network issue?)');
       }
     } catch { /* ok */ }
   }
