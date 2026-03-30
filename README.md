@@ -8,10 +8,10 @@ User describes idea → Yuri drives: Create → Plan → Develop → Test → De
 
 ## How It Works
 
-Yuri is a [Claude Code skill](https://code.claude.com/docs/en/skills) + Channel Gateway. It can be used in two ways:
+Yuri is a [Claude Code skill](https://code.claude.com/docs/en/skills) + Channel Gateway. Two ways to use:
 
 1. **Terminal mode** — activate `/yuri` inside any Claude Code session
-2. **Telegram mode** — chat with Yuri via Telegram bot, backed by a persistent tmux Claude Code session
+2. **Telegram mode** — chat with Yuri via Telegram bot
 
 | Phase | What Yuri Does | Agents Involved |
 |-------|---------------|-----------------|
@@ -34,35 +34,38 @@ Yuri is a [Claude Code skill](https://code.claude.com/docs/en/skills) + Channel 
 ### Method A: From npm (recommended)
 
 ```bash
-# Install globally
 npm install -g orchestrix-yuri
-
-# Initialize skill + global memory
 orchestrix-yuri install
-
-# Start Telegram gateway
-orchestrix-yuri serve --telegram-token "YOUR_BOT_TOKEN"
+orchestrix-yuri start --token "YOUR_BOT_TOKEN"   # first time, saves token
+orchestrix-yuri start                              # from now on
 ```
 
 ### Method B: From source
 
 ```bash
-git clone https://github.com/anthropics/orchestrix-yuri.git
+git clone https://github.com/dorayo/orchestrix-yuri.git
 cd orchestrix-yuri
 npm install
-
-# Initialize skill + global memory
 node bin/install.js install
-
-# Start Telegram gateway
-node bin/serve.js --telegram-token "YOUR_BOT_TOKEN"
+node bin/serve.js --token "YOUR_BOT_TOKEN"
 ```
 
 ### What `install` does
 
 - Copies the Yuri skill to `~/.claude/skills/yuri/`
-- Initializes global memory at `~/.yuri/` (identity, boss profile, portfolio registry, focus, wisdom)
-- Creates channel config at `~/.yuri/config/channels.yaml`
+- Initializes global memory at `~/.yuri/` (identity, boss profile, portfolio, focus, wisdom)
+- Writes a bootstrap signal so Yuri greets you on first interaction
+
+## CLI Commands
+
+```bash
+orchestrix-yuri install                # Install Yuri skill + global memory
+orchestrix-yuri start                  # Start the Channel Gateway
+orchestrix-yuri start --token TOKEN    # Start & save Telegram Bot token (first time)
+orchestrix-yuri stop                   # Stop the running gateway
+orchestrix-yuri status                 # Show gateway status + cost tracking
+orchestrix-yuri --version              # Show version
+```
 
 ## Usage
 
@@ -74,168 +77,130 @@ In any Claude Code session:
 /yuri
 ```
 
-Then either describe your project idea in natural language, or use a specific command:
+### Telegram Mode
 
 | Command | Description |
 |---------|-------------|
-| `*create` | Create a new project (Phase 1) |
-| `*plan` | Start/resume project planning (Phase 2) |
-| `*develop` | Start/resume automated development (Phase 3) |
-| `*test` | Start/resume smoke testing (Phase 4) |
-| `*deploy` | Start/resume deployment (Phase 5) |
-| `*status` | Show current project phase and progress |
-| `*resume` | Resume from last saved checkpoint |
-| `*change "{desc}"` | Handle mid-project requirement change |
+| `*create` | Create a new project |
+| `*plan` | Start planning (runs in background, agents auto-chain) |
+| `*develop` | Start development (4 agents run autonomously) |
+| `*test` | Run smoke tests |
+| `*deploy` | Deploy the project |
+| `*status` | Show progress + cost tracking |
+| `*projects` | List all registered projects |
+| `*switch <name>` | Switch active project |
+| `*cancel` | Stop running phase |
+| `*resume` | Resume from last checkpoint |
+| `*change "{desc}"` | Handle requirement change |
 
-### Telegram Mode
+### Agent Interaction via Telegram
 
-Start the gateway and chat with Yuri via your Telegram bot:
+When a planning agent asks a question (e.g., PM asking to confirm features), Yuri bridges it to Telegram:
 
-```bash
-# With token as CLI argument
-orchestrix-yuri serve --telegram-token "YOUR_BOT_TOKEN"
+```
+Yuri: "📋 PM is asking:
+       Which features to include?
+       1. User auth  2. Dashboard  3. API
+       ↩️ Reply to this message to answer"
 
-# Or configure in ~/.yuri/config/channels.yaml first
-orchestrix-yuri serve
+You reply: "1 and 2, skip 3"   ← forwarded to PM agent
 ```
 
-#### Channel Configuration
-
-Edit `~/.yuri/config/channels.yaml`:
-
-```yaml
-server:
-  port: 7890
-
-channels:
-  telegram:
-    enabled: true
-    token: "YOUR_BOT_TOKEN"
-    mode: polling
-    owner_chat_id: ""  # Auto-bound on first /start
-
-engine:
-  skill: yuri
-  tmux_session: yuri-gateway
-  startup_timeout: 30000
-  poll_interval: 2000
-  timeout: 300000
-  autocompact_pct: 80
-  compact_every: 50
-```
-
-#### First-time Telegram setup
-
-1. Start the gateway: `orchestrix-yuri serve --telegram-token "YOUR_TOKEN"`
-2. Open Telegram, find your bot, send `/start`
-3. The first user to send `/start` becomes the owner (all others are rejected)
-4. Send any message to interact with Yuri
+**Normal messages** (not reply-to) always go to Yuri directly.
 
 ## Architecture
 
-### Persistent tmux Engine
+### Gateway Engine (claude-sdk)
 
-The Telegram gateway runs Claude Code in a persistent tmux session (`yuri-gateway`), not as a one-shot subprocess. This means:
+Each Telegram message is processed via `claude -p --output-format json`:
 
-- **MCP servers connect once** and stay connected across messages
-- **Conversation context is preserved** natively by Claude Code
-- **No cold-start per message** — only the first message incurs startup latency
+- **First message**: `--system-prompt` injects Yuri persona (SKILL.md) + L1 memory + channel instructions
+- **Subsequent**: `--resume SESSION_ID` preserves conversation context
+- **Output**: Structured JSON with `result` (clean text), `session_id`, `total_cost_usd`
 
-State detection uses Claude Code's TUI indicators:
+### Async Phase Orchestration
 
-| Symbol | State | Description |
-|--------|-------|-------------|
-| `○` | Idle | Waiting for input |
-| `●` | Processing | Generating a response |
-| `◐` | Approval | Permission prompt (auto-approved) |
-| `[Verb]ed for Ns` | Complete | Response finished (e.g. "Baked for 31s") |
-
-### Context Management (3-layer)
-
-1. **CLAUDE.md persistence** — core instructions are written to project CLAUDE.md, which survives auto-compact
-2. **Early auto-compact** — `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=80` triggers compaction at 80% (not the default 95%)
-3. **Proactive /compact** — every 50 messages, a `/compact` is sent to keep context lean
-
-### Memory System
-
-Yuri maintains a four-layer global memory at `~/.yuri/`:
+`*plan` and `*develop` run as **Node.js background tasks** (not inside a `claude -p` call):
 
 ```
-~/.yuri/
-├── self.yaml                # Yuri identity
-├── boss/
-│   ├── profile.yaml         # Boss profile
-│   └── preferences.yaml     # Boss preferences
-├── portfolio/
-│   ├── registry.yaml        # All projects (active/archived)
-│   ├── priorities.yaml      # Portfolio priorities
-│   └── relationships.yaml   # Project relationships
-├── focus.yaml               # Current focus & state
-├── config/
-│   └── channels.yaml        # Gateway channel config
-├── chat-history/            # JSONL per chat_id
-├── inbox.jsonl              # Observation signals
-└── wisdom/                  # Accumulated knowledge
+*plan → PhaseOrchestrator.startPlan() → instant reply
+         ↓
+  setInterval(30s) polls tmux agent → detects completion
+         ↓
+  starts next agent → proactive Telegram notification
+         ↓
+  user asks anything → normal Claude response (not blocked)
 ```
 
-### tmux Sessions
+tmux is used **only for multi-agent orchestration** (plan/develop), not for the gateway itself.
 
-| Session | Purpose | Windows |
-|---------|---------|---------|
-| `yuri-gateway` | Telegram channel gateway | 1 (Claude Code interactive) |
-| `op-{project}` | Planning phase | One per agent (Analyst, PM, UX, Architect, PO) |
-| `orchestrix-{repo-id}` | Development phase | 4 fixed (Architect, SM, Dev, QA) |
+### Memory System (4 layers)
+
+```
+L1 Global (~/.yuri/)           — Yuri identity, boss profile, portfolio, focus
+L2 Project ({project}/.yuri/)  — Project identity, knowledge, decisions
+L3 Phase State (state/)        — Per-phase operational status
+L4 Events (timeline/)          — Append-only event history
+```
+
+**Reflect Engine**: Signals detected from user messages (preferences, identity, priorities) are written to `inbox.jsonl`, then processed by `reflect.js` into the corresponding YAML files before each Claude call.
+
+### Context Management
+
+- `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=80` triggers auto-compact at 80%
+- Proactive `/compact` every 50 messages
+- L1 hash tracking: when memory changes, a `[CONTEXT UPDATE]` prefix is injected into the next message
 
 ### File Structure
 
 ```
 orchestrix-yuri/
 ├── bin/
-│   ├── install.js           # CLI entry (install / serve / migrate)
-│   └── serve.js             # Gateway launcher
+│   ├── install.js              # CLI entry (install/start/stop/status)
+│   ├── serve.js                # Gateway launcher
+│   ├── stop.js                 # PID-based stop
+│   └── status.js               # Gateway + cost status
 ├── lib/
-│   ├── installer.js         # Global install logic
-│   ├── migrate.js           # v1 → v2 memory migration
+│   ├── installer.js            # Global install logic
+│   ├── migrate.js              # v1 → v2 memory migration
 │   └── gateway/
-│       ├── index.js          # startGateway()
-│       ├── config.js         # Config loading + defaults
-│       ├── router.js         # Message routing + 5-engine orchestration
-│       ├── binding.js        # Owner authentication
-│       ├── history.js        # Chat history (JSONL)
+│       ├── index.js             # startGateway()
+│       ├── config.js            # Config loading + defaults
+│       ├── router.js            # Message routing, phase detection, signal detection
+│       ├── binding.js           # Owner authentication
+│       ├── history.js           # Chat history (JSONL)
+│       ├── log.js               # Colored terminal logging
 │       ├── channels/
-│       │   └── telegram.js   # grammy Telegram adapter
+│       │   └── telegram.js      # grammy adapter (placeholder + edit pattern)
 │       └── engine/
-│           └── claude-tmux.js # Persistent tmux session engine
+│           ├── claude-sdk.js    # Claude -p JSON engine + session management
+│           ├── phase-orchestrator.js  # Background plan/develop execution
+│           ├── reflect.js       # Inbox signal processing → YAML memory
+│           └── tmux-utils.js    # Shared tmux operations
 └── skill/
-    ├── SKILL.md              # Agent persona
-    ├── tasks/                # Phase workflow instructions
-    ├── scripts/              # Shell scripts (tmux, monitoring)
-    ├── templates/            # Memory schema
-    ├── data/                 # Decision rules
-    └── resources/            # MCP config, hooks, tmux scripts
+    ├── SKILL.md                 # Yuri persona + tmux command rules
+    ├── tasks/                   # Phase workflow instructions
+    ├── scripts/                 # Shell scripts (tmux, monitoring)
+    ├── templates/               # Memory schema
+    ├── data/                    # Decision rules, signal taxonomy
+    └── resources/               # MCP config, hooks, tmux scripts
 ```
 
-## Change Management
+### tmux Sessions (for agent orchestration)
 
-Yuri handles mid-project changes based on scope:
+| Session | Purpose | Windows |
+|---------|---------|---------|
+| `op-{project}` | Planning phase | One per agent |
+| `orchestrix-{repo-id}` | Development phase | 4 fixed (Architect, SM, Dev, QA) |
+
+## Change Management
 
 | Scope | Action |
 |-------|--------|
 | Small (≤5 files) | Dev `*solo` directly |
 | Medium | PO `*route-change` → standard workflow |
 | Large | Pause dev, partial re-plan |
-| New iteration | PM `*start-iteration` → parse next-steps.md → drive agents → resume dev |
-
-## Deployment Options
-
-| Region | Provider | Best For |
-|--------|----------|----------|
-| China | Sealos | Prototype / MVP |
-| China | Aliyun ECS + Docker | Production |
-| China | Vercel (CN) | Frontend / SSR |
-| Overseas | Vercel | Frontend / Full-stack |
-| Overseas | Railway | Backend APIs |
-| Overseas | AWS / GCP | Enterprise |
+| New iteration | PM `*start-iteration` → plan → dev → test |
 
 ## Troubleshooting
 
@@ -243,17 +208,23 @@ Yuri handles mid-project changes based on scope:
 # Check prerequisites
 tmux -V && which claude && node -v
 
-# View gateway logs (all output goes to stdout)
-orchestrix-yuri serve --telegram-token "..." 2>&1 | tee gateway.log
+# View gateway logs
+orchestrix-yuri start 2>&1 | tee gateway.log
 
-# Check if tmux session is alive
+# Check status + cost
+orchestrix-yuri status
+
+# Stop the gateway
+orchestrix-yuri stop
+
+# Check running tmux sessions (plan/develop phases)
 tmux ls
 
-# Peek into the Claude Code session
-tmux attach -t yuri-gateway
+# Peek into a planning agent
+tmux attach -t op-myproject
 
-# Manual cleanup if session gets stuck
-tmux kill-session -t yuri-gateway
+# Peek into dev agents
+tmux attach -t orchestrix-myproject
 ```
 
 ## License

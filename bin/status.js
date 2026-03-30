@@ -30,6 +30,9 @@ function status() {
       const age = Date.now() - new Date(s.savedAt).getTime();
       if (age < 24 * 3600_000) {
         sessionInfo = `${s.sessionId.slice(0, 8)}... (${s.messageCount || 0} messages)`;
+        if (s.totalCost) {
+          sessionInfo += ` | $${s.totalCost.toFixed(4)}`;
+        }
       } else {
         sessionInfo = 'expired';
       }
