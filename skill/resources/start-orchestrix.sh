@@ -303,7 +303,7 @@ for i in $(seq "$CC_STARTUP_WAIT" -1 1); do
     if [ $((i % 2)) -eq 0 ] && [ -z "$TRUST_HANDLED" ]; then
         for w in 0 1 2 3; do
             PANE=$(tmux capture-pane -t "$SESSION_NAME:$w" -p -S -10 2>/dev/null || true)
-            if echo "$PANE" | grep -qi "trust"; then
+            if echo "$PANE" | grep -qi "trust this folder\|safety check"; then
                 tmux send-keys -t "$SESSION_NAME:$w" Enter
                 echo ""
                 echo "   🔓 Auto-accepted trust dialog in window $w"

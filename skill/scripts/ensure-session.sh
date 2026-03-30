@@ -33,7 +33,7 @@ if [ "$TYPE" = "planning" ]; then
   for i in $(seq 1 6); do
     sleep 2
     PANE_TEXT=$(tmux capture-pane -t "$SESSION:0" -p -S -10 2>/dev/null || true)
-    if echo "$PANE_TEXT" | grep -qi "trust"; then
+    if echo "$PANE_TEXT" | grep -qi "trust this folder\|safety check"; then
       tmux send-keys -t "$SESSION:0" Enter
       sleep 2
       break
