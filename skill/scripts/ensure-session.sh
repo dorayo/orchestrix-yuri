@@ -26,7 +26,24 @@ if [ "$TYPE" = "planning" ]; then
   # Recreate planning session
   tmux new-session -d -s "$SESSION" -n "Plan" -c "$PROJECT_ROOT"
   tmux send-keys -t "$SESSION:0" "cc" C-m
-  sleep 12
+
+  # Wait for Claude Code to start, auto-accepting trust dialog if it appears.
+  # The trust prompt shows "Do you trust" and blocks until user responds.
+  # We poll the pane every 2s and send Enter if we detect trust-related text.
+  for i in $(seq 1 6); do
+    sleep 2
+    PANE_TEXT=$(tmux capture-pane -t "$SESSION:0" -p -S -10 2>/dev/null || true)
+    if echo "$PANE_TEXT" | grep -qi "trust"; then
+      tmux send-keys -t "$SESSION:0" Enter
+      sleep 2
+      break
+    fi
+    # Already past trust dialog (❯ prompt visible)
+    if echo "$PANE_TEXT" | grep -q "❯"; then
+      break
+    fi
+  done
+
   echo "$SESSION"
 
 elif [ "$TYPE" = "dev" ]; then

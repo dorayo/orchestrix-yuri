@@ -291,10 +291,30 @@ echo ""
 echo "⏳ Waiting ${CC_STARTUP_WAIT}s for Claude Code to start..."
 echo ""
 
-# Show countdown
+# Countdown + auto-accept trust dialogs in all windows.
+# Claude Code shows "Do you trust" when entering a new project directory.
+# We detect it and send Enter to accept. Checked every 2 seconds.
+TRUST_HANDLED=""
 for i in $(seq "$CC_STARTUP_WAIT" -1 1); do
     printf "\r   %2d seconds remaining..." "$i"
     sleep 1
+
+    # Check every 2 seconds for trust dialog in any window
+    if [ $((i % 2)) -eq 0 ] && [ -z "$TRUST_HANDLED" ]; then
+        for w in 0 1 2 3; do
+            PANE=$(tmux capture-pane -t "$SESSION_NAME:$w" -p -S -10 2>/dev/null || true)
+            if echo "$PANE" | grep -qi "trust"; then
+                tmux send-keys -t "$SESSION_NAME:$w" Enter
+                echo ""
+                echo "   🔓 Auto-accepted trust dialog in window $w"
+            fi
+        done
+        # Check if any window has ❯ (past trust dialog)
+        PANE0=$(tmux capture-pane -t "$SESSION_NAME:0" -p -S -5 2>/dev/null || true)
+        if echo "$PANE0" | grep -q "❯"; then
+            TRUST_HANDLED="yes"
+        fi
+    fi
 done
 printf "\r   ✓ Claude Code should be ready now!      \n"
 echo ""

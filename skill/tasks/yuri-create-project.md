@@ -126,31 +126,9 @@ cp "$RESOURCE_DIR/start-orchestrix.sh"     "$PROJECT_DIR/.orchestrix-core/script
 chmod +x "$PROJECT_DIR/.orchestrix-core/scripts/start-orchestrix.sh"
 ```
 
-### Step 6.1: Register Trusted Directory
-
-Claude Code shows a "trust this directory?" dialog when entering a new project for the first time.
-This blocks automated tmux-based agent operations. Pre-register the project directory as trusted:
-
-```bash
-# Add project to Claude Code's trusted directories list
-CLAUDE_SETTINGS="$HOME/.claude/settings.local.json"
-if [ -f "$CLAUDE_SETTINGS" ]; then
-  # Use node to safely merge into JSON (avoids jq dependency)
-  node -e "
-    const fs = require('fs');
-    const s = JSON.parse(fs.readFileSync('$CLAUDE_SETTINGS', 'utf8'));
-    if (!s.trustedDirectories) s.trustedDirectories = [];
-    if (!s.trustedDirectories.includes('$PROJECT_DIR')) {
-      s.trustedDirectories.push('$PROJECT_DIR');
-      fs.writeFileSync('$CLAUDE_SETTINGS', JSON.stringify(s, null, 2));
-    }
-  "
-else
-  echo '{"trustedDirectories":["'"$PROJECT_DIR"'"]}' > "$CLAUDE_SETTINGS"
-fi
-```
-
-This ensures all tmux-based agents (planning, development) can start without manual trust confirmation.
+**Note on trust dialog:** Claude Code shows a "trust this directory?" dialog when entering a new project.
+This is handled automatically by `ensure-session.sh` and `start-orchestrix.sh`, which detect the trust
+prompt in the tmux pane and send Enter to accept it during the startup wait period.
 
 ---
 
