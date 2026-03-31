@@ -105,27 +105,63 @@ Read `{project}/.yuri/state/phase2.yaml`.
 
 ### IF Phase 3 (Develop) is in progress or complete:
 
-Read `{project}/.yuri/state/phase3.yaml`.
+**Generate a progress card** using these data sources:
 
-Scan current story statuses:
+**1. Scan story statuses:**
 ```bash
 SCRIPT_DIR="${CLAUDE_SKILL_DIR}/scripts"
 bash "$SCRIPT_DIR/scan-stories.sh" "$PROJECT_DIR"
 ```
 
-```
-### Development Progress
+The script outputs:
+- `Total:{N}` — total planned stories from all `docs/prd/epic-*.yaml` definitions
+- `Created:{N}` — story files in `docs/stories/`
+- `StatusDone:{filename}` / `StatusInProgress:{filename}` / etc. — per-file status
+- `Epics:{N}` — total epics (max N from `docs/prd/epic-N-*`)
+- `CurrentEpic:{N}` — epic of current story
+- `CurrentStory:{filename}` — InProgress or last non-Done story
 
-| Metric | Value |
-|--------|-------|
-| Total Stories | {total} |
-| Done | {done count} |
-| In Progress | {in_progress count} |
-| Blocked | {blocked count} |
-| Remaining | {remaining count} |
+**2. Detect active tmux agent:**
+```bash
+# Check which orchestrix-* session exists
+tmux list-sessions -F "#{session_name}" 2>/dev/null | grep "^orchestrix-"
 
-Progress: [{done}/{total}] {'█' * pct}{'░' * (100-pct)} {pct}%
+# For each window (0=Architect, 1=SM, 2=Dev, 3=QA):
+# - Window showing "Command | Description" table = IDLE
+# - Window WITHOUT that table = actively executing
+for w in 0 1 2 3; do
+  OUTPUT=$(tmux capture-pane -t "$DEV_SESSION:$w" -p -S -15)
+  if ! echo "$OUTPUT" | grep -q "Command.*Description"; then
+    echo "Window $w is ACTIVE"
+  fi
+done
 ```
+
+**3. Format the progress card:**
+
+```
+📊 Dev Progress Report
+━━━━━━━━━━━━━━━━━━━━━
+Epic: {CurrentEpic}/{Epics}
+Story: {done}/{total} done ({pct}%) | {created} created
+▓▓▓▓▓▓░░░░░░░░░░░░░░ {pct}%
+━━━━━━━━━━━━━━━━━━━━━
+✅ Done: {N}
+🔄 InProgress: {N}
+📋 Approved: {N}
+📝 Draft: {N}
+━━━━━━━━━━━━━━━━━━━━━
+📝 Current: {CurrentStory}
+🤖 Agent: {active_agent} (window {N})
+⏱ Running for {elapsed}
+```
+
+Where:
+- `{pct}` = round(done / total * 100)
+- Progress bar: `▓` for filled, `░` for empty (20 chars total)
+- Only show status categories with count > 0
+- `{elapsed}` = time since `focus.updated_at` or `phase3.started_at`
+- If no agent is active (all windows show Command table), show "All agents idle (waiting for handoff)"
 
 ### IF Phase 4 (Test) is in progress or complete:
 
