@@ -1,6 +1,6 @@
 {
   "name": "orchestrix-yuri",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "Yuri — Meta-Orchestrator for Orchestrix. Drive your entire project lifecycle with natural language.",
   "main": "lib/installer.js",
   "bin": {
