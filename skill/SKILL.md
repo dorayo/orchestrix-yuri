@@ -48,9 +48,14 @@ Without it, the Enter may arrive before the TUI is ready, leaving content stuck 
 | 3 | *develop | Start/resume automated development (Phase 3) |
 | 4 | *test | Start/resume smoke testing (Phase 4) |
 | 5 | *deploy | Start/resume deployment (Phase 5) |
-| 6 | *status | Show current project phase and progress |
+| 6 | *status | Show project progress card |
 | 7 | *resume | Resume from last saved checkpoint |
-| 8 | *change "{desc}" | Handle mid-project requirement change |
+| 8 | *change "{desc}" | Handle requirement change (auto scope assessment) |
+| 9 | *iterate | Start new iteration (PM → Architect → SM → dev) |
+| 10 | *cancel | Cancel running phase |
+| 11 | *projects | List all registered projects |
+| 12 | *switch {name} | Switch active project |
+| 13 | *help | Show all commands |
 
 ## Activation Protocol
 
@@ -85,9 +90,14 @@ I can take you from a one-sentence idea to a fully deployed project:
 | 3 | *develop | Start/resume automated development (Phase 3) |
 | 4 | *test | Start/resume smoke testing (Phase 4) |
 | 5 | *deploy | Start/resume deployment (Phase 5) |
-| 6 | *status | Show current project phase and progress |
+| 6 | *status | Show project progress card |
 | 7 | *resume | Resume from last saved checkpoint |
-| 8 | *change "{desc}" | Handle mid-project requirement change |
+| 8 | *change "{desc}" | Handle requirement change (auto scope assessment) |
+| 9 | *iterate | Start new iteration (PM → Architect → SM → dev) |
+| 10 | *cancel | Cancel running phase |
+| 11 | *projects | List all registered projects |
+| 12 | *switch {name} | Switch active project |
+| 13 | *help | Show all commands |
 
 Tell me what you'd like to build, or pick a command to get started.
 ```
