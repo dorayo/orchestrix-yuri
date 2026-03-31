@@ -63,12 +63,14 @@ for f in "$STORIES_DIR"/*.md; do
   status_lower=$(echo "$status" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
 
   case "$status_lower" in
-    done) echo "StatusDone:$fname" ;;
-    inprogress|in_progress|in-progress) echo "StatusInProgress:$fname"; in_progress_story="$fname" ;;
-    review|inreview|in_review) echo "StatusReview:$fname" ;;
+    done|complete|completed) echo "StatusDone:$fname" ;;
+    inprogress|in_progress|in-progress|wip) echo "StatusInProgress:$fname"; in_progress_story="$fname" ;;
+    review|inreview|in_review|underreview) echo "StatusReview:$fname" ;;
     blocked) echo "StatusBlocked:$fname" ;;
-    approved) echo "StatusApproved:$fname" ;;
-    *) echo "StatusOther:$fname" ;;
+    approved|ready) echo "StatusApproved:$fname" ;;
+    draft|new|todo|pending|open) echo "StatusDraft:$fname" ;;
+    "") echo "StatusNoStatus:$fname" ;;
+    *) echo "StatusOther:$fname:$status" ;;
   esac
 done
 
@@ -80,18 +82,29 @@ else
   echo "Epics:0"
 fi
 
-# ── CurrentEpic: max prefix from story filenames ──
-current_epic=$(ls "$STORIES_DIR" 2>/dev/null | grep -oE '^[0-9]+' | sort -n | tail -1)
-echo "CurrentEpic:${current_epic:-0}"
-
-# ── CurrentStory: InProgress or highest numbered ──
+# ── CurrentEpic + CurrentStory: based on InProgress story ──
+# Priority: InProgress story > last non-Done story > highest numbered
 if [ -n "$in_progress_story" ]; then
   echo "CurrentStory:$in_progress_story"
+  current_epic=$(echo "$in_progress_story" | grep -oE '^[0-9]+')
+  echo "CurrentEpic:${current_epic:-0}"
 else
-  latest=$(ls "$STORIES_DIR"/*.md 2>/dev/null | sort -V | tail -1)
-  if [ -n "$latest" ]; then
-    echo "CurrentStory:$(basename "$latest" .md)"
+  # Find last non-Done story (most likely being worked on next)
+  last_non_done=""
+  for f in $(ls "$STORIES_DIR"/*.md 2>/dev/null | sort -V); do
+    [ -f "$f" ] || continue
+    s=$(awk '/^## Status/{found=1; next} found && /^[[:space:]]*$/{next} found{print; exit}' "$f" 2>/dev/null)
+    s_lower=$(echo "$s" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+    if [ "$s_lower" != "done" ]; then
+      last_non_done=$(basename "$f" .md)
+    fi
+  done
+  if [ -n "$last_non_done" ]; then
+    echo "CurrentStory:$last_non_done"
+    current_epic=$(echo "$last_non_done" | grep -oE '^[0-9]+')
+    echo "CurrentEpic:${current_epic:-0}"
   else
     echo "CurrentStory:none"
+    echo "CurrentEpic:0"
   fi
 fi
