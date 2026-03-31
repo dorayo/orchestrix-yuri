@@ -218,3 +218,49 @@ describe('PhaseOrchestrator API', () => {
     o._phase = null;
   });
 });
+
+// ── Slash to Star Conversion ───────────────────────────────────────────────────
+
+describe('Slash to Star Conversion', () => {
+  // Replicate the conversion logic from router.js
+  function convert(text) {
+    if (text.startsWith('/') && !text.startsWith('/start') && !text.startsWith('/o') && !text.startsWith('/clear')) {
+      return '*' + text.slice(1);
+    }
+    return text;
+  }
+
+  // Should convert
+  it('/status → *status', () => assert.equal(convert('/status'), '*status'));
+  it('/help → *help', () => assert.equal(convert('/help'), '*help'));
+  it('/plan → *plan', () => assert.equal(convert('/plan'), '*plan'));
+  it('/develop → *develop', () => assert.equal(convert('/develop'), '*develop'));
+  it('/test → *test', () => assert.equal(convert('/test'), '*test'));
+  it('/deploy → *deploy', () => assert.equal(convert('/deploy'), '*deploy'));
+  it('/iterate → *iterate', () => assert.equal(convert('/iterate'), '*iterate'));
+  it('/cancel → *cancel', () => assert.equal(convert('/cancel'), '*cancel'));
+  it('/projects → *projects', () => assert.equal(convert('/projects'), '*projects'));
+  it('/switch myapp → *switch myapp', () => assert.equal(convert('/switch myapp'), '*switch myapp'));
+  it('/change "desc" → *change "desc"', () => assert.equal(convert('/change "add feature"'), '*change "add feature"'));
+
+  // Should NOT convert
+  it('/start stays /start', () => assert.equal(convert('/start'), '/start'));
+  it('/o dev stays /o dev', () => assert.equal(convert('/o dev'), '/o dev'));
+  it('/clear stays /clear', () => assert.equal(convert('/clear'), '/clear'));
+  it('*status stays *status', () => assert.equal(convert('*status'), '*status'));
+  it('plain text stays', () => assert.equal(convert('hello'), 'hello'));
+
+  // After conversion, should match commands
+  it('/status converts and matches status pattern', () => {
+    const converted = convert('/status');
+    assert.ok(matchStatus(converted));
+  });
+  it('/help converts and matches meta command', () => {
+    const converted = convert('/help');
+    assert.equal(matchMeta(converted), 'help');
+  });
+  it('/plan converts and matches phase command', () => {
+    const converted = convert('/plan');
+    assert.equal(matchPhase(converted), 'plan');
+  });
+});
