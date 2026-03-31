@@ -26,8 +26,9 @@ total_planned=0
 if [ -d "$PRD_DIR" ]; then
   for yaml in "$PRD_DIR"/epic-*.yaml; do
     [ -f "$yaml" ] || continue
-    # Count lines matching "  - id:" (story entries in the stories array)
-    n=$(grep -cE '^\s+- id:' "$yaml" 2>/dev/null || echo 0)
+    # Count story-level entries only (2-space indent: "  - id:")
+    # Deeper indentation (4+ spaces) are acceptance_criteria, business_rules, etc.
+    n=$(grep -cE '^  - id:' "$yaml" 2>/dev/null || echo 0)
     total_planned=$((total_planned + n))
   done
 fi
