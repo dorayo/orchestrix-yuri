@@ -38,6 +38,15 @@ for status in Done InProgress Review Blocked Approved AwaitingArchReview Require
   echo "$status:$count"
 done
 
-# Count epics by unique filename prefix (e.g., 1.x → epic 1, 2.x → epic 2)
-epics=$(ls "$STORIES_DIR" 2>/dev/null | grep -oE '^[0-9]+' | sort -u | wc -l | tr -d ' ')
-echo "Epics:$epics"
+# Count total epics from docs/prd/epic-N-*.yaml (max N = total epics)
+PRD_DIR="$1/docs/prd"
+if [ -d "$PRD_DIR" ]; then
+  epics=$(ls "$PRD_DIR" 2>/dev/null | grep -oE '^epic-[0-9]+' | grep -oE '[0-9]+' | sort -n | tail -1)
+  echo "Epics:${epics:-0}"
+else
+  echo "Epics:0"
+fi
+
+# Current epic (max prefix from story files)
+current_epic=$(ls "$STORIES_DIR" 2>/dev/null | grep -oE '^[0-9]+' | sort -n | tail -1)
+echo "CurrentEpic:${current_epic:-0}"
