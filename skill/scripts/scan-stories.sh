@@ -55,9 +55,9 @@ for f in "$STORIES_DIR"/*.md; do
   # Try heading format: "## Status" then next non-empty line
   status=$(awk '/^## Status/{found=1; next} found && /^[[:space:]]*$/{next} found{print; exit}' "$f" 2>/dev/null)
 
-  # Fallback: inline "Status: XXX"
+  # Fallback: inline "status: Done" or "Status: Done" (case-insensitive)
   if [ -z "$status" ]; then
-    status=$(grep -m1 -oE 'Status:\s*\S+' "$f" 2>/dev/null | sed 's/Status:\s*//')
+    status=$(grep -m1 -oiE 'status:\s*\S+' "$f" 2>/dev/null | sed 's/[Ss]tatus:\s*//')
   fi
 
   # Normalize to lowercase, strip whitespace
