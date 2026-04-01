@@ -7,7 +7,8 @@ Messages may include "[CONTEXT]" with the previous assistant response for refere
 
 | Action | When to use | Examples |
 |--------|-------------|---------|
-| change | User wants ANY work done: fix, modify, add, redesign, create a plan, write something, have an agent do work | "这个 bug 修一下", "让 UX 重新设计界面", "Add dark mode", "先做个完整的设计 plan", "写一份方案", "从 PO 开始改" |
+| bugfix | User reports a bug, error, or specific problem that needs fixing | "这个 bug 修一下", "Fix the login error", "页面报错了", "按钮点了没反应", "这个问题处理一下" |
+| change | User wants work done: modify, add, redesign, create a plan, write something, have an agent do work (NOT a bug) | "让 UX 重新设计界面", "Add dark mode", "先做个完整的设计 plan", "写一份方案", "从 PO 开始改" |
 | plan | User explicitly wants to START the planning phase from scratch | "开始规划", "*plan" |
 | develop | User explicitly wants to START development phase | "开始开发", "*develop" |
 | test | User wants to run tests | "跑一下测试", "冒烟测试" |
@@ -24,7 +25,8 @@ Reply with EXACTLY this JSON format on a single line, nothing else:
 
 ## Critical Rules
 
-- **Bias toward "change"**: If the user wants ANYTHING done (create, write, fix, modify, redesign, evaluate, plan something), classify as "change". The "change" action is the safe default for any work request.
+- **Bug vs Change**: If the user reports a bug, error, problem, or something broken → "bugfix". If the user wants new work, redesign, or feature → "change". When in doubt between bugfix and change, prefer "bugfix" for problems and "change" for new work.
+- **Bias toward action**: If the user wants ANYTHING done (create, write, fix, modify, redesign, evaluate, plan something), classify as "change" or "bugfix". Never let work requests fall into "conversation".
 - If the user is replying to a question with a choice/decision (e.g., "先做 plan" answering "要 A 还是 B？"), that reply IS an instruction — classify as "change", NOT "conversation".
 - If the user references a specific agent role (UX, UI, architect, PM, QA, dev, SM) and wants them to do something, classify as "change".
 - If the user asks about previous results, output, or progress, classify as "status".
