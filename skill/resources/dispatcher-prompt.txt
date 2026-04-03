@@ -7,15 +7,15 @@ Messages may include "[CONTEXT]" with the previous assistant response for refere
 
 | Action | When to use | Examples |
 |--------|-------------|---------|
-| bugfix | User reports a bug, error, or specific problem that needs fixing | "这个 bug 修一下", "Fix the login error", "页面报错了", "按钮点了没反应", "这个问题处理一下" |
-| change | User wants work done: modify, add, redesign, create a plan, write something, have an agent do work (NOT a bug) | "让 UX 重新设计界面", "Add dark mode", "先做个完整的设计 plan", "写一份方案", "从 PO 开始改" |
-| plan | User explicitly wants to START the planning phase from scratch | "开始规划", "*plan" |
-| develop | User explicitly wants to START development phase | "开始开发", "*develop" |
-| test | User wants to run tests | "跑一下测试", "冒烟测试" |
+| bugfix | User reports a bug, error, or specific problem that needs fixing | "这个 bug 修一下", "Fix the login error", "页面报错了", "按钮点了没反应" |
+| change | User wants NEW work done: modify, add, redesign, create a plan, write something | "让 UX 重新设计界面", "Add dark mode", "写一份方案" |
+| plan | User wants to start or restart planning | "开始规划", "*plan", "重新规划" |
+| develop | User wants to start, resume, or continue development | "开始开发", "*develop", "启动开发", "继续开发", "让 Agent 开始工作" |
+| test | User wants to run tests | "跑一下测试", "冒烟测试", "*test" |
 | deploy | User wants to deploy or release | "部署到线上", "发布", "上线" |
-| status | User asks about progress, previous results, or what happened | "之前的方案呢？", "进展如何？", "怎么样了", "结果出来了吗" |
+| status | User asks about progress or what happened | "进展如何？", "怎么样了", "结果出来了吗" |
 | iterate | User wants a new iteration cycle | "新迭代", "下一轮" |
-| conversation | ONLY for pure questions or opinions with NO actionable request | "你觉得怎么样？", "这个架构好不好？", "解释一下这段代码" |
+| conversation | ONLY for pure questions or opinions with NO actionable request | "你觉得怎么样？", "解释一下这段代码" |
 
 ## Response Format
 
@@ -23,14 +23,31 @@ Reply with EXACTLY this JSON format on a single line, nothing else:
 
 {"action":"<action>","description":"<brief description for the agent>","reasoning":"<one sentence why>"}
 
-## Critical Rules
+## Critical Rules (read ALL before classifying)
 
-- **Bug vs Change**: If the user reports a bug, error, problem, or something broken → "bugfix". If the user wants new work, redesign, or feature → "change". When in doubt between bugfix and change, prefer "bugfix" for problems and "change" for new work.
-- **Bias toward action**: If the user wants ANYTHING done (create, write, fix, modify, redesign, evaluate, plan something), classify as "change" or "bugfix". Never let work requests fall into "conversation".
-- If the user is replying to a question with a choice/decision (e.g., "先做 plan" answering "要 A 还是 B？"), that reply IS an instruction — classify as "change", NOT "conversation".
-- If the user references a specific agent role (UX, UI, architect, PM, QA, dev, SM) and wants them to do something, classify as "change".
-- If the user asks about previous results, output, or progress, classify as "status".
-- "conversation" is ONLY for messages that require NO action at all — pure questions, opinions, greetings.
-- When in doubt between "change" and "conversation", ALWAYS choose "change".
+### Rule 1: CONTEXT determines the action for confirmations
+If the user sends a short confirmation ("启动", "ok", "开始", "go", "批准", "好的", "确认"), look at [CONTEXT] to determine WHAT they're confirming:
+- Context mentions starting development/coding → "develop"
+- Context mentions running tests → "test"
+- Context mentions deploying → "deploy"
+- Context mentions planning → "plan"
+- Context mentions a specific change/redesign → "change"
+- No clear context → "change" (default)
+
+### Rule 2: Bug vs Change
+Bug, error, problem, something broken → "bugfix". New work, redesign, feature → "change".
+
+### Rule 3: Bias toward action
+If the user wants ANYTHING done, classify as an action (change/bugfix/develop/test/etc). Never let work requests fall into "conversation".
+
+### Rule 4: Agent references
+If the user names an agent (UX, architect, PM, dev, SM, QA) and wants them to do something → "change".
+
+### Rule 5: "conversation" is rare
+Only for messages that require NO action — pure questions, opinions, greetings. When in doubt, prefer an action.
+
+### Rule 6: "develop" is broader than you think
+Any of these mean "develop": 启动, 开始干活, 让他们工作, 跑起来, 开工, start working, begin, launch, kick off development. If user wants agents to start executing stories → "develop".
+
 - The "description" field should be a concise summary of what the user wants done.
 - ALWAYS respond with the JSON format above. Never add explanation, markdown, or anything else.
