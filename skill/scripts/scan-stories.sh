@@ -70,8 +70,11 @@ for f in "$STORIES_DIR"/*.md; do
     blocked) echo "StatusBlocked:$fname" ;;
     approved|ready) echo "StatusApproved:$fname" ;;
     draft|new|todo|pending|open) echo "StatusDraft:$fname" ;;
+    awaitingarchreview|awaiting_arch_review) echo "StatusAwaitingArchReview:$fname" ;;
+    requiresrevision|requires_revision) echo "StatusRequiresRevision:$fname" ;;
+    escalated) echo "StatusEscalated:$fname" ;;
     "") echo "StatusNoStatus:$fname" ;;
-    *) echo "StatusOther:$fname:$status" ;;
+    *) echo "Status${status}:$fname" ;;
   esac
 done
 
