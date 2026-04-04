@@ -35,7 +35,18 @@ For Phase 1 (create), no project L2 exists yet. Step 0.3 is skipped — only loa
 
 ## Step 1: Collect Orchestrix License Key
 
-Ask the user for their Orchestrix license key.
+**Auto-discovery (try before asking)**:
+Search for an existing license key in this order:
+1. `~/.yuri/portfolio/registry.yaml` — check all projects for `license_key` field
+2. `~/Codes/*/.yuri/identity.yaml` — scan sibling projects for `project.license_key`
+3. `~/Codes/*/.mcp.json` — look for `Bearer orch_live_*` or `Bearer orch_trial_*`
+4. Environment variable `ORCHESTRIX_LICENSE_KEY`
+
+If a valid key is found (starts with `orch_live_` or `orch_trial_`):
+→ Use it automatically. Inform user: "Found existing license key: orch_live_...{last 4 chars}. Using it."
+→ Skip to Step 2.
+
+**If no key found, ask the user.**
 
 **Validation rules**:
 - Must start with `orch_live_` or `orch_trial_`
