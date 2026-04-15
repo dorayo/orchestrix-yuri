@@ -157,29 +157,115 @@ IF signal detected → append to `~/.yuri/inbox.jsonl`.
 
 ---
 
-## Step 3: All Epics Tested
+## Step 3: Browser QA (gstack — UI projects only)
 
-1. Check results: count passed vs failed.
+**Purpose**: After code-level smoke tests pass, run real browser-based end-to-end testing to catch rendering bugs, JS runtime errors, broken interactions, and visual issues that unit/integration tests cannot detect.
 
-2. IF all passed:
+### 3.0 Check preconditions
+
+Skip this step entirely IF any of:
+- gstack is not installed (`~/.claude/skills/gstack/` missing)
+- Project has no UI (no frontend files, no `docs/front-end-spec*.md`)
+- No dev server URL is available
+
+```bash
+HAS_GSTACK=$(test -d "$HOME/.claude/skills/gstack" && echo "yes" || echo "no")
+HAS_UI=$(ls "$PROJECT_DIR/src/"*.{tsx,jsx,vue,svelte} "$PROJECT_DIR/app/"*.{tsx,jsx} 2>/dev/null | head -1)
+```
+
+IF skipping → report:
+```
+ℹ️ Browser QA skipped ({reason: no gstack / no UI / no dev server})
+```
+→ proceed to Step 4.
+
+### 3.1 Run Browser QA
+
+Report to user:
+```
+🌐 Running browser-based QA testing...
+```
+
+Execute in Yuri's own session:
+
+```
+/qa
+```
+
+This runs in **Standard** tier by default (systematic exploration of all pages, 5-10 issues).
+
+Wait for completion. Parse for:
+- **Health score** (0-100)
+- **Issues found** (by severity: critical, high, medium, low)
+- **Auto-fixed count** (gstack /qa fixes bugs and commits atomically)
+- **Before/after screenshots**
+
+### 3.2 Evaluate Browser QA Results
+
+IF health score ≥ 80 AND no critical issues:
+- Report:
+  ```
+  ✅ Browser QA passed (score: {score}/100, {fixed} issues auto-fixed)
+  ```
+- Proceed to Step 4.
+
+IF health score < 80 OR critical issues found:
+- Report:
+  ```
+  ⚠️ Browser QA found issues (score: {score}/100):
+  - Critical: {n} | High: {n} | Medium: {n}
+  - Auto-fixed: {n}
+  - Remaining: {n}
+
+  {list of unfixed critical/high issues with repro steps}
+
+  Fix remaining / Accept and continue / Re-run QA?
+  ```
+  - **Fix remaining** → route unfixed bugs to Dev agent via `*quick-fix`, then re-run `/qa`.
+  - **Accept** → proceed with warnings logged.
+  - **Re-run** → execute `/qa` again.
+
+Append to timeline:
+```jsonl
+{"ts":"{ISO-8601}","type":"browser_qa","score":{score},"issues":{total},"fixed":{fixed}}
+```
+
+Update `{project}/.yuri/state/phase4.yaml` → add `browser_qa` section:
+```yaml
+browser_qa:
+  status: complete
+  score: {score}
+  issues: {total}
+  fixed: {fixed}
+```
+
+---
+
+## Step 4: All Testing Complete
+
+1. Check results: count passed vs failed epics + browser QA status.
+
+2. IF all epics passed (and browser QA passed or skipped):
    - `{project}/.yuri/state/phase4.yaml` → `status: "complete"`, `completed_at: now`
    - `{project}/.yuri/focus.yaml` → `step: "phase4.complete"`, `pulse: "Phase 4 complete, all epics passed"`
    - Append: `{"ts":"...","type":"phase_completed","phase":4}` to timeline.
 
-3. IF some failed:
+3. IF some epics failed:
    - Report failed epics to user.
-   - Ask: "Retry failed epics, skip to deploy, or pause?"
+   - Ask: "Retry failed epics, skip to pre-ship, or pause?"
    - IF retry → re-enter Step 2 for failed epics only.
    - IF skip → mark phase complete with note about failures.
    - IF pause → save state, stop.
 
-4. Present deployment options:
+4. Route to Pre-Ship Quality Gate:
 ```
-🚀 All smoke tests passed! Ready to deploy? (Y/N)
+🚀 All tests passed! Next: Pre-Ship Quality Gate (code review + security + performance).
+Run quality gates now? (Y / Skip to deploy)
 ```
 
-- If Y → execute `tasks/yuri-deploy-project.md`
-- If N → save state, end with reminder: "Run `/yuri *deploy` when ready."
+- If Y → execute `tasks/yuri-pre-ship.md`
+- If "Skip to deploy" → execute `tasks/yuri-deploy-project.md`
+- If user wants to pause → save state, end with reminder: "Run `/yuri *pre-ship` or `/yuri *deploy` when ready."
 
 ---
 

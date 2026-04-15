@@ -90,3 +90,80 @@ IF the current phase just transitioned to `complete`:
    - Projects with `status: paused` for > 30 days: suggest archiving to user.
    - Projects with `status: maintenance` and no timeline events for > 60 days:
      remove from `~/.yuri/focus.yaml` → `attention_queue`.
+
+---
+
+## F.5 Post-Ship Documentation & Retrospective (gstack — only after Phase 5 completes)
+
+**Skip this section entirely unless Phase 5 (Deploy) just completed successfully.**
+
+Check gstack availability first:
+```bash
+test -d "$HOME/.claude/skills/gstack" && echo "gstack_available" || echo "gstack_missing"
+```
+
+IF `gstack_missing` → skip F.5 entirely.
+
+### F.5.1 Document Release (`/document-release`)
+
+**Purpose**: Automatically sync project documentation with what actually shipped. READMEs, ARCHITECTURE.md, CONTRIBUTING.md, CHANGELOG, and CLAUDE.md are often stale by deployment time.
+
+Execute:
+
+```
+/document-release
+```
+
+This reads all project docs, cross-references the diff since project start, and updates:
+- README.md (features, setup instructions, API docs)
+- ARCHITECTURE.md (if it exists — system design, data flows)
+- CHANGELOG.md (polished voice, consistent format)
+- Any other documentation that references changed code
+
+Report:
+```
+📝 Documentation synced with shipped code.
+Updated: {list of updated doc files}
+```
+
+Append to timeline:
+```jsonl
+{"ts":"{ISO-8601}","type":"document_release","files_updated":[{list}]}
+```
+
+### F.5.2 Engineering Retrospective (`/retro`)
+
+**Purpose**: Generate a structured retrospective analyzing the full project lifecycle — commit patterns, code quality metrics, testing coverage, shipping velocity, and actionable improvements for the next project.
+
+Execute:
+
+```
+/retro
+```
+
+This analyzes git history for the project and produces:
+- **Velocity metrics**: commits, LOC, test-to-production ratio
+- **Code quality signals**: test coverage trends, file hotspots, fix-to-feature ratio
+- **Time patterns**: work sessions, peak hours, focus score
+- **Top 3 wins**: highest-impact deliverables
+- **3 improvements**: specific, actionable, anchored in data
+- **3 habits for next project**: small, realistic practices
+
+Parse the retro output and extract universal insights for wisdom:
+
+**Promote to global wisdom** (if applicable):
+- Patterns that would benefit future projects → `~/.yuri/wisdom/workflow.md`
+- Technical gotchas discovered → `~/.yuri/wisdom/tech.md`
+- Process pitfalls encountered → `~/.yuri/wisdom/pitfalls.md`
+
+Report summary to user:
+```
+📊 Project Retrospective generated.
+Key stats: {commits} commits, {loc} LOC, {test_ratio}% test coverage
+Top win: {top_win}
+Top improvement: {top_improvement}
+```
+
+Append to timeline:
+```jsonl
+{"ts":"{ISO-8601}","type":"retro_completed","commits":{n},"loc":{n},"test_ratio":{n}}

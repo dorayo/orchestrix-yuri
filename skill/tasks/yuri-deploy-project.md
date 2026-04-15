@@ -9,6 +9,9 @@
 
 - Phase 4 (Test) must be complete.
 - `{project}/.yuri/state/phase4.yaml` must have `status: complete`.
+- Pre-Ship Quality Gate should be complete (recommended but not required).
+  - IF `{project}/.yuri/state/pre-ship.yaml` exists with `status: complete` → proceed.
+  - IF not → warn: "Pre-ship quality gates were not run. Consider running `*pre-ship` first." → ask user to continue or run pre-ship.
 
 ---
 
@@ -89,28 +92,104 @@ Update `{project}/.yuri/focus.yaml` → `action: "executing deployment via {stra
 
 ---
 
-## Step 4: Health Check
+## Step 4: Post-Deploy Verification
 
-After deployment completes:
-
+After deployment completes, set:
 ```bash
 DEPLOYED_URL="{url from deployment output}"
+```
+
+### 4.1 Quick Health Check (immediate)
+
+First, do a fast HTTP check to confirm the deployment succeeded at all:
+
+```bash
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$DEPLOYED_URL" 2>/dev/null)
 ```
 
-IF `HTTP_CODE` = 200 (or expected success code):
-- `{project}/.yuri/state/phase5.yaml` → `status: "complete"`, `completed_at: now`, `url: "$DEPLOYED_URL"`, `health: "healthy"`
-- `{project}/.yuri/focus.yaml` → `step: "phase5.complete"`, `pulse: "Deployed and healthy at {url}"`
+IF `HTTP_CODE` != 200 → deployment itself failed:
+- Report error to user with diagnostics.
+- Offer: retry, try alternative strategy, or pause.
+- Do NOT proceed to canary monitoring.
+
+### 4.2 Canary Monitoring (gstack — 10 minutes)
+
+IF quick health check passed AND gstack is available:
+
+```bash
+test -d "$HOME/.claude/skills/gstack" && echo "gstack_available" || echo "gstack_missing"
+```
+
+**IF gstack available:**
+
+Report to user:
+```
+✅ Deployment succeeded (HTTP 200). Starting 10-minute canary monitoring...
+```
+
+Step 1 — Capture baseline (if pre-ship `/benchmark` was run, this is already done):
+```
+/canary {DEPLOYED_URL} --baseline
+```
+
+Step 2 — Start canary monitoring:
+```
+/canary {DEPLOYED_URL}
+```
+
+This monitors for 10 minutes, checking every 60 seconds:
+- Page load failures or timeouts
+- New console errors not in baseline
+- Performance regressions (load times 2x slower than baseline)
+- Broken links
+
+Wait for canary to complete. Parse results:
+- **Health status**: HEALTHY / DEGRADED / BROKEN
+- **Alert count**
+- **Rollback recommendation** (if any)
+
+IF canary reports **HEALTHY**:
+- Proceed to success state (Step 4.3).
+
+IF canary reports **DEGRADED**:
+- Report issues to user with screenshot evidence:
+  ```
+  ⚠️ Canary detected issues during monitoring:
+  {list of alerts with evidence}
+
+  The deployment is functional but has issues. Continue / Rollback?
+  ```
+  - IF continue → proceed to Step 4.3 with warnings logged.
+  - IF rollback → offer rollback guidance, pause.
+
+IF canary reports **BROKEN**:
+- Report critical failure:
+  ```
+  🚨 Canary detected critical failures:
+  {alerts with screenshots}
+
+  Recommend immediate rollback. Rollback / Investigate / Keep?
+  ```
+
+Append to timeline:
+```jsonl
+{"ts":"{ISO-8601}","type":"canary_completed","url":"{url}","health":"{status}","alerts":{count}}
+```
+
+**IF gstack NOT available** — fall back to basic check:
+- The HTTP 200 check from 4.1 is sufficient. Proceed to Step 4.3.
+- Note in timeline: `"canary":"skipped_no_gstack"`
+
+### 4.3 Mark Complete
+
+- `{project}/.yuri/state/phase5.yaml` → `status: "complete"`, `completed_at: now`, `url: "$DEPLOYED_URL"`, `health: "{canary_status or 'healthy'}"`, `canary_alerts: {count or 0}`
+- `{project}/.yuri/focus.yaml` → `step: "phase5.complete"`, `pulse: "Deployed and {health} at {url}"`
 - Append to timeline:
   ```jsonl
-  {"ts":"{ISO-8601}","type":"project_deployed","url":"{url}","strategy":"{strategy}","health":"healthy"}
+  {"ts":"{ISO-8601}","type":"project_deployed","url":"{url}","strategy":"{strategy}","health":"{status}","canary_alerts":{count}}
   {"ts":"{ISO-8601}","type":"phase_completed","phase":5}
   ```
 - Update `~/.yuri/portfolio/registry.yaml` → this project's `status: maintenance`, `pulse: "v1.0 deployed at {url}"`
-
-IF health check fails:
-- Report error to user with diagnostics.
-- Offer: retry, try alternative strategy, or pause.
 
 Report:
 ```
@@ -120,7 +199,8 @@ Report:
 |------|--------|
 | **Strategy** | {strategy} |
 | **URL** | {url} |
-| **Health** | ✅ Healthy |
+| **Health** | {✅ Healthy / ⚠️ Degraded} |
+| **Canary** | {10 min monitoring: N alerts / skipped} |
 
 🎉 Project lifecycle complete! From idea to production.
 

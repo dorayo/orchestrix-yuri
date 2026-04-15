@@ -196,7 +196,7 @@ tmux kill-session -t "$SESSION"
 
 2. Update memory:
 - `{project}/.yuri/state/phase2.yaml` → `status: complete`, `completed_at: now`
-- `{project}/.yuri/focus.yaml` → `step: "phase2.complete"`, `pulse: "Phase 2 complete, ready for development"`, `tmux.planning_session: ""`
+- `{project}/.yuri/focus.yaml` → `step: "phase2.complete"`, `pulse: "Phase 2 complete, ready for review"`, `tmux.planning_session: ""`
 
 3. Output summary:
 ```
@@ -210,8 +210,149 @@ All planning documents generated:
 - Sharded context files for development
 ```
 
-4. Ask:
+4. Proceed to Plan Review Gate (Step 4).
+
+---
+
+## Step 4: Plan Review Gate (gstack)
+
+**Purpose**: Use gstack review skills to challenge assumptions, audit architecture, and validate design before writing any code. Catching issues here is 10x cheaper than catching them in development.
+
+### 4.0 Check gstack availability
+
+```bash
+test -d "$HOME/.claude/skills/gstack" && echo "gstack_available" || echo "gstack_missing"
 ```
+
+IF `gstack_missing` → skip to Step 4.5 (ask user to proceed to development).
+
+### 4.1 Ask user for review depth
+
+```
+## 📋 Plan Review Gate
+
+Planning is complete. Before development begins, I can run independent quality reviews on the plan using gstack:
+
+| # | Review | What it does | Time |
+|---|--------|-------------|------|
+| 1 | **Full Review** | CEO strategy + Eng architecture + Design (if UI) | ~10 min |
+| 2 | **Eng Only** | Architecture, test coverage, failure modes | ~5 min |
+| 3 | **Skip** | Go straight to development | 0 min |
+
+Recommendation: **Full Review** for new projects, **Eng Only** for iterations.
+Select (1/2/3):
+```
+
+- IF user selects **3 (Skip)** → go to Step 4.5.
+- IF user selects **2 (Eng Only)** → run only Step 4.3.
+- IF user selects **1 (Full Review)** → run Steps 4.2 through 4.4.
+
+### 4.2 CEO Strategy Review (`/plan-ceo-review`)
+
+Report:
+```
+🎯 Plan Review 1/3: CEO Strategy Review — challenging scope and premises...
+```
+
+Execute in Yuri's own session:
+
+```
+/plan-ceo-review
+```
+
+This runs in **HOLD SCOPE** mode by default (maximum rigor without scope creep).
+
+Wait for completion. Key outputs to capture:
+- Premise challenges
+- Error/rescue registry
+- Failure modes
+- "Not in scope" section
+- Review readiness score
+
+IF `/plan-ceo-review` proposes plan modifications:
+- Show diff summary to user.
+- Ask: "Accept changes / Modify / Reject?"
+- IF accepted → plan files updated (gstack writes directly).
+- IF rejected → revert changes, continue with original plan.
+
+Append to timeline:
+```jsonl
+{"ts":"{ISO-8601}","type":"plan_review","reviewer":"ceo","status":"complete"}
+```
+
+### 4.3 Engineering Architecture Review (`/plan-eng-review`)
+
+Report:
+```
+🏗️ Plan Review 2/3: Engineering Review — locking architecture and test strategy...
+```
+
+Execute:
+
+```
+/plan-eng-review
+```
+
+Key outputs:
+- Architecture diagram
+- Coverage diagram (code paths with test status)
+- Failure mode analysis per new codepath
+- Worktree parallelization strategy
+- Issues found per section
+
+IF review proposes plan changes → same accept/modify/reject flow as 4.2.
+
+Append to timeline:
+```jsonl
+{"ts":"{ISO-8601}","type":"plan_review","reviewer":"eng","status":"complete"}
+```
+
+### 4.4 Design Review (`/plan-design-review`) — UI projects only
+
+Check if project has UI components:
+1. Look for frontend files or frontend stack in `{project}/.yuri/identity.yaml`.
+2. Check if `docs/front-end-spec*.md` exists.
+
+IF no UI → skip with note:
+```
+ℹ️ Plan Review 3/3: Design Review — skipped (no UI components)
+```
+
+IF UI present:
+
+Report:
+```
+🎨 Plan Review 3/3: Design Review — auditing UX dimensions...
+```
+
+Execute:
+
+```
+/plan-design-review
+```
+
+Key outputs:
+- 7-dimension scorecard (info architecture, interaction states, user journey, AI slop risk, design system, responsive/a11y, unresolved decisions)
+- Updated plan with design decisions filled in
+
+IF review proposes changes → same accept/modify/reject flow.
+
+Append to timeline:
+```jsonl
+{"ts":"{ISO-8601}","type":"plan_review","reviewer":"design","status":"complete"}
+```
+
+### 4.5 Review Summary + Transition
+
+```
+## 📋 Plan Review Complete
+
+| Review | Status | Key Finding |
+|--------|--------|-------------|
+| CEO Strategy | {✅/⏭️} | {one-line summary} |
+| Eng Architecture | {✅/⏭️} | {one-line summary} |
+| Design | {✅/⏭️} | {one-line summary} |
+
 🚀 Ready to start automated development? (Y/N)
 ```
 

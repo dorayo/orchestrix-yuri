@@ -130,7 +130,61 @@ done
    - `/clear` → restart agent
 4. Increment `state/phase3.yaml` → `monitoring.stuck_count`.
 
-IF `stuck_count > 3`:
+IF `stuck_count` = 2 AND gstack is available:
+- **Escalate to `/investigate`** before requesting human intervention.
+- This provides a structured root cause analysis instead of blind retries.
+
+```bash
+test -d "$HOME/.claude/skills/gstack" && echo "gstack_available" || echo "gstack_missing"
+```
+
+IF gstack available:
+
+Report to user:
+```
+🔍 Story stuck after 2 recovery attempts. Running root cause investigation...
+```
+
+Execute in Yuri's own session:
+
+```
+/investigate
+```
+
+Provide `/investigate` with context:
+- Captured tmux pane contents from all 4 windows
+- Current story ID and description
+- Error patterns detected
+- What recovery was already attempted
+
+Wait for `/investigate` to complete. Parse output:
+- **Root cause** identified?
+- **Fix confidence** (1-10)
+- **Recommended fix** with file:line references
+
+IF fix confidence ≥ 8:
+- Report to user: "Root cause identified: {summary}. Auto-fix recommended. Proceed? (Y/N)"
+- IF Y → route fix to Dev agent via `*quick-fix "{investigate_fix_description}"`, then resume monitoring.
+- IF N → present full investigation report, let user decide.
+
+IF fix confidence < 8:
+- Report full investigation to user with diagnostics:
+  ```
+  🔍 Investigation Report:
+  - Symptom: {symptom}
+  - Root cause: {root_cause or "inconclusive"}
+  - Confidence: {score}/10
+  - Recommended action: {action}
+
+  Please advise: Fix manually / Retry / Skip this story / Pause?
+  ```
+
+Append to timeline:
+```jsonl
+{"ts":"{ISO-8601}","type":"investigate","story":"{id}","root_cause":"{summary}","confidence":{score}}
+```
+
+IF `stuck_count > 3` (after investigate attempt or if gstack not available):
 - Report to user with full diagnostics.
 - Request human intervention.
 - Pause monitoring loop.

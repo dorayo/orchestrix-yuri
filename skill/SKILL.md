@@ -44,18 +44,19 @@ Without it, the Enter may arrive before the TUI is ready, leaving content stuck 
 | # | Command | Description |
 |---|---------|-------------|
 | 1 | *create | Create a new project (Phase 1) |
-| 2 | *plan | Start/resume project planning (Phase 2) |
-| 3 | *develop | Start/resume automated development (Phase 3) |
-| 4 | *test | Start/resume smoke testing (Phase 4) |
-| 5 | *deploy | Start/resume deployment (Phase 5) |
-| 6 | *status | Show project progress card |
-| 7 | *resume | Resume from last saved checkpoint |
-| 8 | *change "{desc}" | Handle requirement change (auto scope assessment) |
-| 9 | *iterate | Start new iteration (PM → Architect → SM → dev) |
-| 10 | *cancel | Cancel running phase |
-| 11 | *projects | List all registered projects |
-| 12 | *switch {name} | Switch active project |
-| 13 | *help | Show all commands |
+| 2 | *plan | Start/resume project planning (Phase 2) — includes gstack Plan Review Gate |
+| 3 | *develop | Start/resume automated development (Phase 3) — gstack /investigate for stuck stories |
+| 4 | *test | Start/resume smoke testing (Phase 4) — includes gstack browser QA for UI projects |
+| 5 | *pre-ship | Run quality gates: code review + security + performance + design (Phase 4.5) |
+| 6 | *deploy | Start/resume deployment (Phase 5) — gstack /canary post-deploy monitoring |
+| 7 | *status | Show project progress card |
+| 8 | *resume | Resume from last saved checkpoint |
+| 9 | *change "{desc}" | Handle requirement change (auto scope assessment) |
+| 10 | *iterate | Start new iteration (PM → Architect → SM → dev) |
+| 11 | *cancel | Cancel running phase |
+| 12 | *projects | List all registered projects |
+| 13 | *switch {name} | Switch active project |
+| 14 | *help | Show all commands |
 
 ## Activation Protocol
 
@@ -89,15 +90,16 @@ I can take you from a one-sentence idea to a fully deployed project:
 | 2 | *plan | Start/resume project planning (Phase 2) |
 | 3 | *develop | Start/resume automated development (Phase 3) |
 | 4 | *test | Start/resume smoke testing (Phase 4) |
-| 5 | *deploy | Start/resume deployment (Phase 5) |
-| 6 | *status | Show project progress card |
-| 7 | *resume | Resume from last saved checkpoint |
-| 8 | *change "{desc}" | Handle requirement change (auto scope assessment) |
-| 9 | *iterate | Start new iteration (PM → Architect → SM → dev) |
-| 10 | *cancel | Cancel running phase |
-| 11 | *projects | List all registered projects |
-| 12 | *switch {name} | Switch active project |
-| 13 | *help | Show all commands |
+| 5 | *pre-ship | Run quality gates before deploy (Phase 4.5) |
+| 6 | *deploy | Start/resume deployment (Phase 5) |
+| 7 | *status | Show project progress card |
+| 8 | *resume | Resume from last saved checkpoint |
+| 9 | *change "{desc}" | Handle requirement change (auto scope assessment) |
+| 10 | *iterate | Start new iteration (PM → Architect → SM → dev) |
+| 11 | *cancel | Cancel running phase |
+| 12 | *projects | List all registered projects |
+| 13 | *switch {name} | Switch active project |
+| 14 | *help | Show all commands |
 
 Tell me what you'd like to build, or pick a command to get started.
 ```
@@ -134,10 +136,36 @@ Every task file follows a standardized three-part structure:
 | *plan | [yuri-plan-project.md](tasks/yuri-plan-project.md) |
 | *develop | [yuri-develop-project.md](tasks/yuri-develop-project.md) |
 | *test | [yuri-test-project.md](tasks/yuri-test-project.md) |
+| *pre-ship | [yuri-pre-ship.md](tasks/yuri-pre-ship.md) |
 | *deploy | [yuri-deploy-project.md](tasks/yuri-deploy-project.md) |
 | *resume | [yuri-resume.md](tasks/yuri-resume.md) |
 | *status | [yuri-status.md](tasks/yuri-status.md) |
 | *change | [yuri-handle-change.md](tasks/yuri-handle-change.md) |
+
+## Lifecycle Flow
+
+```
+Create → Plan → [Plan Review Gate] → Develop → Test → [Browser QA] → Pre-Ship → Deploy → [Canary] → Close Out
+                  (gstack)                        (gstack)    (gstack)             (gstack)   (gstack retro+docs)
+```
+
+gstack quality gates are **additive** — if gstack is not installed, the original flow works unchanged.
+All gstack integration points gracefully degrade: check for `~/.claude/skills/gstack/` and skip if absent.
+
+## gstack Integration
+
+Yuri integrates with [gstack](https://github.com/garrytan/gstack) skills at 6 points in the lifecycle:
+
+| Phase | gstack Skill | Purpose | Required? |
+|-------|-------------|---------|-----------|
+| Plan (Phase 2) | `/plan-ceo-review`, `/plan-eng-review`, `/plan-design-review` | Challenge assumptions, audit architecture, validate design | Optional (user chooses depth) |
+| Develop (Phase 3) | `/investigate` | Root cause analysis for stuck stories | Auto-triggered on stuck_count=2 |
+| Test (Phase 4) | `/qa` | Browser-based end-to-end testing for UI projects | Auto for UI projects, skip for API-only |
+| Pre-Ship (Phase 4.5) | `/review`, `/cso`, `/benchmark`, `/design-review` | Code review, security audit, performance baseline, design QA | Recommended, skippable |
+| Deploy (Phase 5) | `/canary` | 10-minute post-deploy monitoring with regression detection | Auto if gstack available |
+| Close Out | `/document-release`, `/retro` | Sync docs with shipped code, structured retrospective | Auto after Phase 5 |
+
+**Install gstack**: `git clone --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack && cd ~/.claude/skills/gstack && ./setup`
 
 ## Memory Layout
 

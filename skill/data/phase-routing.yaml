@@ -18,6 +18,10 @@ routes:
     target_phase: 4
     command: "*test"
 
+  - intent_patterns: ["pre-ship", "quality gate", "code review", "security audit", "pre-launch check", "ready to ship"]
+    target_phase: 4.5
+    command: "*pre-ship"
+
   - intent_patterns: ["deploy", "ship", "release", "go live", "publish", "launch"]
     target_phase: 5
     command: "*deploy"
