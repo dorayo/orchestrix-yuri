@@ -74,6 +74,38 @@ Report to user:
 SM is beginning the development loop...
 ```
 
+### Step 1.5: Kickoff — Send ONE Command, Then Hands Off
+
+**ARCHITECTURAL CONSTRAINT (see SKILL.md → Agent Autonomy Model):**
+
+After the dev session is running, Yuri sends exactly ONE command to the SM window
+to start the development loop, then NEVER sends another direct command to any
+agent window. The handoff-detector.sh (Stop Hook) drives all subsequent
+agent-to-agent routing automatically.
+
+**Kickoff procedure:**
+
+1. Ensure all story docs exist (or epic YAMLs are present for SM to create them).
+2. Send the first draft command to SM:
+   ```bash
+   tmux send-keys -t "$SESSION:1" "*draft {first_story_id}"
+   sleep 1
+   tmux send-keys -t "$SESSION:1" Enter
+   ```
+3. Include iteration context if starting a new iteration:
+   ```bash
+   tmux send-keys -t "$SESSION:1" "*draft {story_id} — Iteration {N}, epics {list}, order: {order}"
+   sleep 1
+   tmux send-keys -t "$SESSION:1" Enter
+   ```
+4. **Transition to Monitor Only mode.** Do NOT send any more commands.
+
+**Why this matters:**
+- handoff-detector.sh `/clear`s agent windows after each task completion
+- Yuri commands sent to a window about to be `/clear`ed are silently lost
+- Two orchestrators (Yuri + handoff-detector) fighting over tmux windows = race conditions
+- Yuri re-intervenes ONLY during stuck recovery (see Step 2.3)
+
 ---
 
 ## Step 2: Monitoring Loop
@@ -97,12 +129,27 @@ IF `~/.yuri/focus.yaml` shows this project is no longer the highest priority
 AND another project has `urgency: high` in `attention_queue`:
 → Report to user: "Note: {other-project} has high urgency. Continue monitoring {current}?"
 
-### 2.1 Scan Story Statuses
+### 2.1 Scan Story Statuses (Multi-Source)
 
+**Primary source** — story docs:
 ```bash
 SCRIPT_DIR="${CLAUDE_SKILL_DIR}/scripts"
 RESULT=$(bash "$SCRIPT_DIR/scan-stories.sh" "$PROJECT_DIR")
 ```
+
+**Secondary source** — git log (cross-validation):
+```bash
+COMMITTED=$(git log --oneline --since="$ITERATION_START" | grep -cE "feat\(story-|feat\(solo-")
+```
+
+**Tertiary source** — handoff-detector log:
+```bash
+HANDOFF_LOG="/tmp/${SESSION}-handoff.log"
+[ -f "$HANDOFF_LOG" ] && tail -20 "$HANDOFF_LOG"
+```
+
+If story doc count and git commit count diverge by > 1, trust git commits
+(story docs may not be updated if SM was bypassed during stuck recovery).
 
 Output: count by status (Blocked, InProgress, Review, Done, etc.)
 
@@ -113,21 +160,50 @@ Output: count by status (Blocked, InProgress, Review, Done, etc.)
 ✅ Done: {list of done story IDs}
 🔄 In Progress: {list}
 ⏳ Remaining: {count}
+🔗 Handoff chain: {last 3 handoff events from log}
 ```
 
 ### 2.3 Stuck Detection
 
-IF no progress for 15 minutes (3 consecutive polls with same done count):
+**Step A: Process health check (every poll, not just when stuck):**
+```bash
+for W in 0 1 2 3; do
+  PANE_PID=$(tmux display-message -t "$SESSION:$W" -p '#{pane_pid}' 2>/dev/null)
+  CLAUDE_ALIVE=$(pgrep -P "$PANE_PID" -f "claude" 2>/dev/null | head -1)
+  if [ -z "$CLAUDE_ALIVE" ]; then
+    # Claude process died in window $W — restart
+    AGENT=$(echo "architect sm dev qa" | cut -d' ' -f$((W+1)))
+    tmux send-keys -t "$SESSION:$W" "claude" Enter
+    sleep 12
+    tmux send-keys -t "$SESSION:$W" "/o $AGENT" Enter
+  fi
+done
+```
+
+**Step B: Handoff chain health (every poll):**
+```bash
+HANDOFF_LOG="/tmp/${SESSION}-handoff.log"
+if [ -f "$HANDOFF_LOG" ]; then
+  LAST_HANDOFF_TIME=$(tail -1 "$HANDOFF_LOG" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:]+')
+  # If last handoff was > 10 min ago but stories are still in progress, chain may be broken
+fi
+```
+
+**Step C: Stuck escalation (3 consecutive polls with same done count):**
+
+IF no progress for 15 minutes:
 1. Capture all 4 tmux window contents:
 ```bash
 for W in 0 1 2 3; do
   tmux capture-pane -t "$SESSION:$W" -p -S -50
 done
 ```
-2. Analyze for error patterns (exceptions, stuck loops, missing handoffs).
-3. Attempt recovery:
-   - Resend handoff to target window
-   - `/clear` → restart agent
+2. Check handoff log for routing errors.
+3. Analyze for error patterns (exceptions, stuck loops, missing handoffs).
+4. Attempt recovery:
+   - IF handoff was emitted but not routed → manually `tmux send-keys` the command to target
+   - IF agent window shows error → `/clear` → `/o {agent}` → resend last command
+   - IF agent process dead → restart (Step A above)
 4. Increment `state/phase3.yaml` → `monitoring.stuck_count`.
 
 IF `stuck_count` = 2 AND gstack is available:

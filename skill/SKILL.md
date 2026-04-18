@@ -214,6 +214,68 @@ When a signal is detected: append a raw observation to `~/.yuri/inbox.jsonl` in 
 
 The inbox is processed during the Close Out step (see [_close-out.md](tasks/_close-out.md)).
 
+## Agent Autonomy Model (Phase 3 — CRITICAL)
+
+Phase 3 (Development) operates in two distinct modes. Violating this boundary
+causes handoff chain breakage, agent window resets, and lost progress.
+
+### Mode 1: Kickoff (Yuri sends ONE command)
+
+Yuri's job is to **kick the SM once** to start the development loop. After that,
+Yuri transitions to Mode 2 immediately.
+
+```
+Yuri → tmux send-keys SM window → "*draft {first_story_id}" → Enter
+```
+
+This is the ONLY direct command Yuri sends to any agent window during Phase 3.
+
+### Mode 2: Monitor Only (Yuri observes, does NOT send commands)
+
+After kickoff, the **handoff-detector.sh** (Stop Hook) drives the entire agent loop:
+
+```
+SM *draft → HANDOFF → Architect *review → HANDOFF → Dev *develop
+  → HANDOFF → QA *test → HANDOFF → SM *create-next-story → loop
+```
+
+Each agent completes its task, emits a `🎯 HANDOFF TO {agent}: *{command}` message,
+then calls `/clear`. The Stop Hook:
+1. Parses the HANDOFF message from the tmux pane output
+2. Routes the command to the target agent's window
+3. `/clear`s the source window and reloads the agent (`/o {agent}`)
+
+**WHY Yuri must NOT send commands after kickoff:**
+- The handoff-detector `/clear`s agent windows after each task completion
+- If Yuri sends a command to a window that is about to be `/clear`ed, the command is lost
+- If Yuri `/clear`s a window manually, it triggers a Stop event that confuses the handoff-detector
+- Two orchestrators fighting over the same tmux windows creates race conditions
+
+### When Yuri CAN re-intervene (Stuck Recovery)
+
+Yuri re-enters command-sending mode ONLY when stuck detection triggers:
+
+| Condition | Action |
+|-----------|--------|
+| No progress for 15 min (3 polls) | Capture all 4 windows, diagnose, resend HANDOFF |
+| Agent process died | Restart `claude` in the window, `/o {agent}`, resend last command |
+| HANDOFF not routed (check `/tmp/{SESSION}-handoff.log`) | Manually `tmux send-keys` the command to target window |
+| stuck_count > 3 | Escalate to user |
+
+After recovery, Yuri returns to Monitor Only mode.
+
+### Iteration Scope
+
+When starting a new iteration on an existing project, Yuri must ensure the SM
+knows which epics/stories are in scope. Two approaches:
+
+1. **Via command context**: Include scope in the kickoff command:
+   `*draft 6.1` + context about epic order (6→7→8)
+2. **Via scope file**: Create `docs/prd/iteration-{N}-scope.yaml` listing epic order
+   and story IDs. SM reads this file to determine what to draft next.
+
+The scope file approach is more robust because SM loses context on `/clear`.
+
 ## tmux Session Management
 
 - **Planning session**: `op-{project-name}` — created during Phase 2, one window per agent step.
